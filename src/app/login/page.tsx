@@ -15,10 +15,10 @@ export default function LoginPage() {
               <p className="text-muted mb-0">Accesso portale amministrativo</p>
             </div>
 
-            <form action={loginAction}>
+            <form action={loginAction} method="post">
               <div className="mb-3">
                 <label htmlFor="email" className="form-label">Email aziendale</label>
-                <input id="email" name="email" type="email" className="form-control" defaultValue="admin@simi.it" required />
+                <input id="email" name="email" type="email" className="form-control" defaultValue="admin@simisrl.eu" required />
               </div>
 
               <div className="mb-3">

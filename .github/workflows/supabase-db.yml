@@ -2,6 +2,7 @@ name: Deploy Supabase migrations
 
 on:
   push:
+    # Trigger on both common branch naming variants used by this repo.
     branches: [main, Main]
     paths:
       - "supabase/**"

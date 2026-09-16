@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/constants";
@@ -24,13 +25,16 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
     <div className="portal-shell d-flex">
       <aside className="sidebar d-none d-lg-block px-3 py-4" style={{ width: 260 }}>
         <div className="d-flex align-items-center gap-3 px-2 pb-4 text-white">
-          <div className="rounded-circle bg-light text-dark fw-bold d-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }}>
-            S
-          </div>
-          <div>
-            <div className="fw-semibold">SIMI Hub</div>
-            <small className="text-white-50">Portale interno</small>
-          </div>
+          <Link href="/dashboard" className="d-flex align-items-center text-decoration-none text-white" aria-label="SIMI Hub home">
+            <Image
+              src="/images/branding/LogoSimi.png"
+              alt="SIMI Hub logo"
+              width={150}
+              height={42}
+              priority
+              style={{ objectFit: "contain", maxWidth: "100%", height: "auto" }}
+            />
+          </Link>
         </div>
 
         <nav className="nav flex-column gap-1">
@@ -79,7 +83,16 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
 
         <div className="offcanvas offcanvas-start sidebar" tabIndex={-1} id="mobileSidebar">
           <div className="offcanvas-header text-white border-bottom border-secondary">
-            <h5 className="offcanvas-title">SIMI Hub</h5>
+            <Link href="/dashboard" className="d-flex align-items-center text-decoration-none" aria-label="SIMI Hub home">
+              <Image
+                src="/images/branding/LogoSimi.png"
+                alt="SIMI Hub logo"
+                width={120}
+                height={34}
+                priority
+                style={{ objectFit: "contain", maxWidth: "100%", height: "auto" }}
+              />
+            </Link>
             <button type="button" className="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
           </div>
           <div className="offcanvas-body">

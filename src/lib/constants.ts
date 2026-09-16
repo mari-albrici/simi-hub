@@ -1,6 +1,6 @@
 export const APP_NAME = "SIMI Hub";
 
-export const ALLOWED_EMAIL_DOMAINS = ["simi.it"];
+export const ALLOWED_EMAIL_DOMAINS = ["simisrl.eu"];
 
 export const DEFAULT_ROLES = [
   "admin",

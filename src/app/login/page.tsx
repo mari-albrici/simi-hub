@@ -38,7 +38,7 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-4 small text-muted">
-              Domini autorizzati: <strong>simi.it</strong>
+              Domini autorizzati: <strong>simisrl.eu</strong>
             </div>
           </div>
         </div>

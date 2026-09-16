@@ -1,0 +1,141 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+:root {
+  --simi-bg: #f4f5f7;
+  --simi-surface: #ffffff;
+  --simi-border: #dfe3e8;
+  --simi-text: #1f2937;
+  --simi-muted: #6b7280;
+  --simi-nav: #111827;
+  --simi-accent: #2c3e50;
+  --simi-accent-soft: #ebf1f6;
+  --simi-warning: #f59e0b;
+  --simi-success: #198754;
+  --simi-danger: #dc3545;
+  --simi-primary: #0d6efd;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--simi-bg);
+  color: var(--simi-text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.sidebar {
+  background: var(--simi-nav);
+  min-height: 100vh;
+}
+
+.sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.78);
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.portal-shell {
+  min-height: 100vh;
+  background: var(--simi-bg);
+}
+
+.content-panel {
+  background: var(--simi-surface);
+  border: 1px solid var(--simi-border);
+  border-radius: 0.75rem;
+}
+
+.app-card {
+  background: var(--simi-surface);
+  border: 1px solid var(--simi-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.kpi-card {
+  padding: 1rem 1.1rem;
+}
+
+.kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.kpi-label {
+  font-size: 0.9rem;
+  color: var(--simi-muted);
+}
+
+.badge-soft {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf2f7;
+}
+
+.login-card {
+  width: min(100%, 440px);
+}
+
+.table thead th {
+  background: #f8f9fa;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--simi-muted);
+}
+
+.empty-state {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--simi-muted);
+}
+
+.wide-search {
+  min-width: 220px;
+}
+
+.breadcrumb {
+  background: transparent;
+  padding: 0;
+  margin: 0 0 0.75rem 0;
+}
+
+.topbar {
+  background: var(--simi-surface);
+  border-bottom: 1px solid var(--simi-border);
+}
+
+@media (max-width: 991.98px) {
+  .sidebar {
+    min-height: auto;
+  }
+}

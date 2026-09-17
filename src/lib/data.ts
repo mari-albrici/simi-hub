@@ -273,6 +273,50 @@ export async function getLegalEntities(): Promise<LegalEntityRecord[]> {
   }));
 }
 
+export type DocumentRecord = {
+  id: string;
+  original_filename: string;
+  file_size: number | null;
+  mime_type: string | null;
+  status: string;
+  created_at: string;
+  downloadUrl: string | null;
+};
+
+const DOCUMENT_SIGNED_URL_TTL_SECONDS = 3600;
+
+export async function getDocuments(): Promise<DocumentRecord[]> {
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase.from("documents").select("*").order("created_at", { ascending: false });
+  if (error || !data) return [];
+
+  return Promise.all(
+    data.map(async (item) => {
+      const storagePath = item.storage_path ? String(item.storage_path) : null;
+      let downloadUrl: string | null = null;
+
+      if (storagePath) {
+        const { data: signed } = await supabase.storage
+          .from("simi-documents")
+          .createSignedUrl(storagePath, DOCUMENT_SIGNED_URL_TTL_SECONDS);
+        downloadUrl = signed?.signedUrl ?? null;
+      }
+
+      return {
+        id: String(item.id),
+        original_filename: String(item.original_filename ?? "-"),
+        file_size: item.file_size != null ? Number(item.file_size) : null,
+        mime_type: item.mime_type ? String(item.mime_type) : null,
+        status: String(item.status ?? "draft"),
+        created_at: String(item.created_at ?? ""),
+        downloadUrl,
+      };
+    }),
+  );
+}
+
 export type EmployeeRecord = {
   id: string;
   full_name: string;

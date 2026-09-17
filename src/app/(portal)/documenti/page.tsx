@@ -1,4 +1,8 @@
 import { uploadDocumentAction } from "@/lib/upload";
+import { getDocuments } from "@/lib/data";
+import { formatDateIT, formatFileSize } from "@/lib/dashboard-helpers";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type DocumentiSearchParams = { error?: string };
 
@@ -8,6 +12,7 @@ export default async function DocumentsPage({
   searchParams: Promise<DocumentiSearchParams>;
 }) {
   const { error } = await searchParams;
+  const documents = await getDocuments();
 
   return (
     <><div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
@@ -27,7 +32,7 @@ export default async function DocumentsPage({
             <input className="form-control" type="file" name="file" required />
           </div>
           <div className="col-md-3">
-            <button className="btn btn-dark w-100" type="submit">Carica</button>
+            <SubmitButton>Carica</SubmitButton>
           </div>
         </form>
       </div>
@@ -43,12 +48,47 @@ export default async function DocumentsPage({
         </div>
       </div>
 
-      <div className="app-card p-3">
-        <div className="empty-state">
-          <div className="h5">Nessun documento caricato</div>
-          <p className="mb-0">Inizia caricando i documenti della prima commessa o del team amministrativo.</p>
+      {documents.length === 0 ? (
+        <div className="app-card p-3">
+          <div className="empty-state">
+            <div className="h5">Nessun documento caricato</div>
+            <p className="mb-0">Inizia caricando i documenti della prima commessa o del team amministrativo.</p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="app-card p-0">
+          <table className="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Nome file</th>
+                <th>Dimensione</th>
+                <th>Caricato il</th>
+                <th>Stato</th>
+                <th className="text-end">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {documents.map((doc) => (
+                <tr key={doc.id}>
+                  <td>{doc.original_filename}</td>
+                  <td>{formatFileSize(doc.file_size)}</td>
+                  <td>{formatDateIT(doc.created_at)}</td>
+                  <td><StatusBadge status={doc.status} /></td>
+                  <td className="text-end">
+                    {doc.downloadUrl ? (
+                      <a href={doc.downloadUrl} className="btn btn-sm btn-outline-secondary" target="_blank" rel="noreferrer">
+                        Scarica
+                      </a>
+                    ) : (
+                      <span className="text-muted small">Non disponibile</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }

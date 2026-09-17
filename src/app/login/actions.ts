@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isAllowedCorporateEmail, normalizeEmail, syncSupabaseUserProfile } from "@/lib/auth";
-import { DEMO_SESSION_COOKIE } from "@/lib/session";
+import { DEMO_SESSION_COOKIE, formatDisplayName } from "@/lib/session";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function loginAction(formData: FormData) {
@@ -34,7 +34,7 @@ export async function loginAction(formData: FormData) {
     DEMO_SESSION_COOKIE,
     JSON.stringify({
       email,
-      name: email.split("@")[0],
+      name: formatDisplayName(email.split("@")[0]),
       role: "admin",
     }),
     {

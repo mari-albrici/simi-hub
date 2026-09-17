@@ -72,3 +72,71 @@ export interface DashboardCard {
   label: string;
   tone?: "primary" | "warning" | "danger" | "success" | "secondary";
 }
+
+// --- Dashboard operativa: modello condiviso per priorità/scadenze/eventi ---
+
+export type Priority = "critical" | "high" | "medium" | "low";
+export type TimeStatus = "overdue" | "today" | "upcoming" | "future";
+
+export type AttentionItemType =
+  | "invoice_purchase_overdue"
+  | "invoice_sale_overdue"
+  | "invoice_to_check"
+  | "invoice_missing_project"
+  | "deadline_overdue"
+  | "deadline_today"
+  | "document_expiring"
+  | "document_expired"
+  | "ddt_without_invoice";
+
+// Voce del centro notifiche/anomalie: rappresenta un evento che richiede verifica umana.
+export interface AttentionItem {
+  id: string;
+  type: AttentionItemType;
+  priority: Priority;
+  title: string;
+  description?: string;
+  projectId?: string;
+  projectCode?: string;
+  subjectName?: string;
+  dueDate?: string;
+  amount?: number;
+  status?: string;
+  href?: string;
+}
+
+export interface DeadlineListItem {
+  id: string;
+  category: string;
+  description: string;
+  dueDate: string;
+  amount?: number;
+  projectCode?: string;
+  subjectName?: string;
+  status: string;
+  timeStatus: TimeStatus;
+  href?: string;
+}
+
+export interface FinancialBucket {
+  totalOpen: number;
+  countOpen: number;
+  dueSoon7: number;
+  dueSoon30: number;
+  overdue: number;
+  countOverdue: number;
+}
+
+export interface CashFlowPoint {
+  label: string;
+  inflow: number;
+  outflow: number;
+}
+
+export interface ProjectAttention {
+  id: string;
+  project_code: string;
+  name: string;
+  customer_name?: string;
+  reasons: string[];
+}

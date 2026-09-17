@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { loginAction } from "@/app/login/actions";
 
@@ -8,14 +9,20 @@ export default function LoginPage() {
         <div className="card shadow-sm border-0">
           <div className="card-body p-4 p-md-5">
             <div className="text-center mb-4">
-              <div className="d-inline-flex align-items-center justify-content-center rounded-circle bg-dark text-white fw-bold mb-3" style={{ width: 56, height: 56 }}>
-                S
-              </div>
+              <Image
+                src="/images/branding/LogoSimi.png"
+                alt="SIMI Hub logo"
+                width={180}
+                height={50}
+                priority
+                className="mb-3"
+                style={{ objectFit: "contain", maxWidth: "100%", height: "auto" }}
+              />
               <h1 className="h3 mb-1">SIMI Hub</h1>
               <p className="text-muted mb-0">Accesso portale amministrativo</p>
             </div>
 
-            <form action={loginAction} method="post">
+            <form action={loginAction}>
               <div className="mb-3">
                 <label htmlFor="email" className="form-label">Email aziendale</label>
                 <input id="email" name="email" type="email" className="form-control" defaultValue="admin@simisrl.eu" required />

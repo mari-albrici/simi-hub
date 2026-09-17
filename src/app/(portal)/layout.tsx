@@ -24,8 +24,8 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
   return (
     <div className="portal-shell d-flex">
       <aside className="sidebar d-none d-lg-block px-3 py-4" style={{ width: 260 }}>
-        <div className="d-flex align-items-center gap-3 px-2 pb-4 text-white">
-          <Link href="/dashboard" className="d-flex align-items-center text-decoration-none text-white" aria-label="SIMI Hub home">
+        <div className="d-flex align-items-center gap-3 px-2 pb-4">
+          <Link href="/dashboard" className="d-flex align-items-center text-decoration-none" aria-label="SIMI Hub home">
             <Image
               src="/images/branding/LogoSimi.png"
               alt="SIMI Hub logo"
@@ -52,15 +52,14 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
             <button className="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar">
               ☰
             </button>
-            <div className="d-none d-md-block">
-              <div className="fw-semibold">SIMI Hub</div>
-            </div>
           </div>
 
           <div className="flex-grow-1 d-flex justify-content-center">
             <div className="input-group wide-search">
-              <span className="input-group-text bg-white">🔎</span>
-              <input className="form-control" type="search" placeholder="Cerca commessa, fattura, azienda, documento..." aria-label="Cerca" />
+             <span className="input-group-text bg-white">
+  <i className="bi bi-search"></i>
+</span>
+              <input className="form-control" type="search" placeholder="Cerca" aria-label="Cerca" />
             </div>
           </div>
 
@@ -82,7 +81,7 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
         </header>
 
         <div className="offcanvas offcanvas-start sidebar" tabIndex={-1} id="mobileSidebar">
-          <div className="offcanvas-header text-white border-bottom border-secondary">
+          <div className="offcanvas-header border-bottom">
             <Link href="/dashboard" className="d-flex align-items-center text-decoration-none" aria-label="SIMI Hub home">
               <Image
                 src="/images/branding/LogoSimi.png"
@@ -93,7 +92,7 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
                 style={{ objectFit: "contain", maxWidth: "100%", height: "auto" }}
               />
             </Link>
-            <button type="button" className="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <button type="button" className="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
           </div>
           <div className="offcanvas-body">
             <nav className="nav flex-column gap-1">

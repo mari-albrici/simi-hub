@@ -2,17 +2,28 @@ import Link from "next/link";
 import { deleteInvoiceAction } from "@/lib/crud";
 import { getInvoices } from "@/lib/data";
 
-export default async function InvoicesPage() {
-  const invoices = await getInvoices();
+type FattureSearchParams = { type?: string; status?: string };
+
+const STATUS_LABEL: Record<string, string> = {
+  open: "aperte",
+  overdue: "scadute",
+  anomaly: "in anomalia",
+  to_check: "da verificare",
+};
+
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<FattureSearchParams>;
+}) {
+  const params = await searchParams;
+  const type = params.type === "purchase" || params.type === "sale" ? params.type : undefined;
+  const status = params.status;
+  const invoices = await getInvoices({ type, status });
+  const hasFilter = Boolean(type || status);
 
   return (
     <>
-      <nav aria-label="breadcrumb" className="breadcrumb">
-        <ol className="breadcrumb">
-          <li className="breadcrumb-item active" aria-current="page">Fatture</li>
-        </ol>
-      </nav>
-
       <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
         <div>
           <h1 className="h3 mb-1">Fatture</h1>
@@ -20,6 +31,16 @@ export default async function InvoicesPage() {
         </div>
         <Link href="/fatture/new" className="btn btn-dark">+ Nuova fattura</Link>
       </div>
+
+      {hasFilter ? (
+        <div className="alert alert-light border d-flex justify-content-between align-items-center mb-3">
+          <span>
+            Filtro attivo: {type === "purchase" ? "Fornitori" : type === "sale" ? "Clienti" : "Tutte"}
+            {status ? ` · ${STATUS_LABEL[status] ?? status}` : ""}
+          </span>
+          <Link href="/fatture" className="btn btn-sm btn-outline-secondary">Rimuovi filtro</Link>
+        </div>
+      ) : null}
 
       <div className="content-panel p-3 mb-4">
         <div className="row g-2">

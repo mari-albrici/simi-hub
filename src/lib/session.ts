@@ -10,6 +10,15 @@ export type DemoSessionUser = {
   role: string;
 };
 
+// Converte la parte locale di una email (es. "mario.rossi") in un nome leggibile ("Mario Rossi").
+export function formatDisplayName(localPart: string): string {
+  return localPart
+    .split(/[.\-_]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export async function getSessionUser(): Promise<DemoSessionUser | null> {
   const cookieStore = await cookies();
   const demoValue = cookieStore.get(DEMO_SESSION_COOKIE)?.value;
@@ -44,7 +53,7 @@ export async function getSessionUser(): Promise<DemoSessionUser | null> {
     name:
       profile?.first_name && profile?.last_name
         ? `${profile.first_name} ${profile.last_name}`
-        : profile?.first_name ?? userData.user.user_metadata?.full_name ?? email.split("@")[0],
+        : profile?.first_name ?? userData.user.user_metadata?.full_name ?? formatDisplayName(email.split("@")[0]),
     role: profile?.role ?? "viewer",
   };
 }

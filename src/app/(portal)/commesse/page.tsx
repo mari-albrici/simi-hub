@@ -7,13 +7,6 @@ export default async function ProjectsPage() {
 
   return (
     <>
-      <nav aria-label="breadcrumb" className="breadcrumb">
-        <ol className="breadcrumb">
-          <li className="breadcrumb-item"><Link href="/dashboard">Dashboard</Link></li>
-          <li className="breadcrumb-item active" aria-current="page">Commesse</li>
-        </ol>
-      </nav>
-
       <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
         <div>
           <h1 className="h3 mb-1">Commesse</h1>

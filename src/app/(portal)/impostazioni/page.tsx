@@ -1,12 +1,6 @@
 export default function SettingsPage() {
   return (
     <>
-      <nav aria-label="breadcrumb" className="breadcrumb">
-        <ol className="breadcrumb">
-          <li className="breadcrumb-item active" aria-current="page">Impostazioni</li>
-        </ol>
-      </nav>
-
       <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
         <div>
           <h1 className="h3 mb-1">Impostazioni</h1>

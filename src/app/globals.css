@@ -1,18 +1,20 @@
 @import "bootstrap/dist/css/bootstrap.min.css";
 
 :root {
-  --simi-bg: #f4f5f7;
+  --simi-bg: #ffffff;
   --simi-surface: #ffffff;
-  --simi-border: #dfe3e8;
+  --simi-border: #e2e5ec;
   --simi-text: #1f2937;
   --simi-muted: #6b7280;
-  --simi-nav: #111827;
-  --simi-accent: #2c3e50;
-  --simi-accent-soft: #ebf1f6;
+  --simi-nav: #ffffff;
+  --simi-primary: #253a78;
+  --simi-primary-dark: #1c2c5c;
+  --simi-primary-soft: rgba(37, 58, 120, 0.08);
+  --simi-accent: #ffd000;
+  --simi-accent-soft: rgba(255, 208, 0, 0.18);
   --simi-warning: #f59e0b;
   --simi-success: #198754;
   --simi-danger: #dc3545;
-  --simi-primary: #0d6efd;
 }
 
 html,
@@ -36,25 +38,47 @@ body {
 .sidebar {
   background: var(--simi-nav);
   min-height: 100vh;
+  border-right: 1px solid var(--simi-border);
 }
 
 .sidebar .nav-link {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--simi-primary);
   border-radius: 0.5rem;
   padding: 0.7rem 0.85rem;
-  transition: background 0.2s ease, color 0.2s ease;
+  border-left: 3px solid transparent;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-.sidebar .nav-link:hover,
+.sidebar .nav-link:hover {
+  background: var(--simi-primary-soft);
+  color: var(--simi-primary);
+  border-left-color: var(--simi-accent);
+}
+
 .sidebar .nav-link.active {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--simi-primary);
   color: #ffffff;
+  border-left-color: var(--simi-accent);
 }
 
 .portal-shell {
   min-height: 100vh;
   background: var(--simi-bg);
 }
+
+.btn-dark,
+.bg-dark {
+  background-color: var(--simi-primary) !important;
+  border-color: var(--simi-primary) !important;
+}
+
+.btn-dark:hover,
+.btn-dark:active,
+.btn-dark:focus {
+  background-color: var(--simi-primary-dark) !important;
+  border-color: var(--simi-primary-dark) !important;
+}
+
 
 .content-panel {
   background: var(--simi-surface);
@@ -71,7 +95,20 @@ body {
 
 .kpi-card {
   padding: 1rem 1.1rem;
+  border-left: 4px solid var(--simi-border);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
+
+a:hover .kpi-card {
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.kpi-card--danger { border-left-color: var(--simi-danger); }
+.kpi-card--warning { border-left-color: var(--simi-warning); }
+.kpi-card--success { border-left-color: var(--simi-success); }
+.kpi-card--primary { border-left-color: var(--simi-primary); }
+.kpi-card--secondary { border-left-color: var(--simi-border); }
 
 .kpi-value {
   font-size: 2rem;
@@ -83,6 +120,13 @@ body {
   font-size: 0.9rem;
   color: var(--simi-muted);
 }
+
+.kpi-sublabel {
+  font-size: 0.8rem;
+  color: var(--simi-muted);
+  margin-top: 0.25rem;
+}
+
 
 .badge-soft {
   display: inline-flex;

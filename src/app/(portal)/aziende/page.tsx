@@ -1,12 +1,10 @@
-export default function LegalEntitiesPage() {
+import { getLegalEntities } from "@/lib/data";
+
+export default async function LegalEntitiesPage() {
+  const legalEntities = await getLegalEntities();
+
   return (
     <>
-      <nav aria-label="breadcrumb" className="breadcrumb">
-        <ol className="breadcrumb">
-          <li className="breadcrumb-item active" aria-current="page">Aziende SIMI</li>
-        </ol>
-      </nav>
-
       <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
         <div>
           <h1 className="h3 mb-1">Aziende SIMI</h1>
@@ -16,36 +14,37 @@ export default function LegalEntitiesPage() {
       </div>
 
       <div className="app-card p-3">
-        <table className="table align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Codice</th>
-              <th>Ragione sociale</th>
-              <th>Paese</th>
-              <th>Email</th>
-              <th>Telefono</th>
-              <th>Attiva</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>SIMI-IT</td>
-              <td>SIMI Italia</td>
-              <td>Italia</td>
-              <td>info@simi.it</td>
-              <td>+39 02 5555 1234</td>
-              <td><span className="badge text-bg-success">Sì</span></td>
-            </tr>
-            <tr>
-              <td>SIMI-FR</td>
-              <td>SIMI Francia</td>
-              <td>Francia</td>
-              <td>info@fr.simi.it</td>
-              <td>+33 1 5555 9876</td>
-              <td><span className="badge text-bg-success">Sì</span></td>
-            </tr>
-          </tbody>
-        </table>
+        {legalEntities.length === 0 ? (
+          <div className="empty-state">
+            <div className="h5">Nessuna azienda registrata</div>
+            <p className="mb-0">Aggiungi le società e le sedi del gruppo SIMI per iniziare.</p>
+          </div>
+        ) : (
+          <table className="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Codice</th>
+                <th>Ragione sociale</th>
+                <th>Paese</th>
+                <th>Email</th>
+                <th>Telefono</th>
+                <th>Attiva</th>
+              </tr>
+            </thead>
+            <tbody>
+              {legalEntities.map((entity) => (
+                <tr key={entity.id}>
+                  <td>{entity.code}</td>
+                  <td>{entity.business_name}</td>
+                  <td>{entity.country ?? "-"}</td>
+                  <td>{entity.email ?? "-"}</td>
+                  <td>{entity.phone ?? "-"}</td>
+                  <td><span className={`badge text-bg-${entity.active ? "success" : "secondary"}`}>{entity.active ? "Sì" : "No"}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </>
   );

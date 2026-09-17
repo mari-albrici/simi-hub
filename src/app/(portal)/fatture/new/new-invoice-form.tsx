@@ -104,7 +104,8 @@ export function NewInvoiceForm() {
         <p className="text-muted small mb-3">
           Carica il PDF della fattura: i campi sottostanti verranno precompilati automaticamente
           (data, intestatario, origine, totale, IVA, aliquota) leggendo il testo del documento.
-          Funziona solo con PDF con testo selezionabile (non scansioni). Controlla sempre i dati prima di salvare.
+          Se il PDF non ha testo selezionabile (es. scansione o fattura elettronica con font non standard)
+          viene tentato automaticamente un OCR locale, più lento ma più affidabile. Controlla sempre i dati prima di salvare.
         </p>
         <div className="d-flex align-items-center gap-3 flex-wrap">
           <input
@@ -119,7 +120,7 @@ export function NewInvoiceForm() {
           {isExtracting && (
             <span className="text-muted small">
               <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
-              Lettura del documento in corso…
+              Lettura del documento in corso… (può richiedere qualche secondo in più se serve l&apos;OCR)
             </span>
           )}
         </div>

@@ -1,8 +1,13 @@
 "use server";
 
-import { getDocumentProxy, extractText } from "unpdf";
+import os from "os";
+import { getDocumentProxy, extractText, renderPageAsImage } from "unpdf";
+import { createWorker } from "tesseract.js";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MIN_TEXT_LENGTH = 10;
+const MAX_OCR_PAGES = 3;
+const OCR_RENDER_SCALE = 2;
 
 export type InvoiceExtraction = {
   invoice_number: string | null;
@@ -57,6 +62,35 @@ function cleanText(raw: string | undefined): string | null {
   return value.length > 0 ? value : null;
 }
 
+// Confronto tollerante a punti/spazi tra le lettere (es. "S.I.M.I." nei facsimile SDI).
+function containsSimi(value: string | null): boolean {
+  if (!value) return false;
+  return /simi/i.test(value.replace(/[^a-z]/gi, ""));
+}
+
+// Fallback per PDF con testo non estraibile (scansioni o font senza mappatura Unicode,
+// caso frequente nelle fatture elettroniche generate dal foglio di stile SDI): rende le
+// prime pagine come immagine ed esegue OCR locale (nessuna API esterna).
+async function ocrExtractText(pdf: Awaited<ReturnType<typeof getDocumentProxy>>): Promise<string> {
+  const pagesToScan = Math.min(pdf.numPages, MAX_OCR_PAGES);
+  const worker = await createWorker("ita", 1, { cachePath: os.tmpdir() });
+
+  try {
+    let combined = "";
+    for (let pageNumber = 1; pageNumber <= pagesToScan; pageNumber += 1) {
+      const imageBuffer = await renderPageAsImage(pdf, pageNumber, {
+        scale: OCR_RENDER_SCALE,
+        canvasImport: () => import("@napi-rs/canvas"),
+      });
+      const { data } = await worker.recognize(Buffer.from(imageBuffer));
+      combined += `\n${data.text}`;
+    }
+    return combined;
+  } finally {
+    await worker.terminate();
+  }
+}
+
 const VAT_RATE_LINE = /iva\s*(\d+(?:[.,]\d+)?)\s*%\s*[:\-]?\s*(.*)$/i;
 const AMOUNT_NET_LINE = /(?:totale\s+)?imponibile\s*[:\-]?\s*(.*)$/i;
 const DUE_DATE_LINE = /(?:data\s+)?scadenza(?:\s+pagamento)?\s*[:\-]?\s*(.*)$/i;
@@ -66,6 +100,106 @@ const ISSUER_LINE = /(?:fornitore|mittente|emesso\s*da)\s*[:\-]?\s*(.*)$/i;
 const COUNTERPARTY_LINE = /(?:cliente|destinatario|spett(?:\.le|abile)?)\s*[:\-]?\s*(.*)$/i;
 const AMOUNT_TOTAL_LINE = /totale\s*(?:documento|fattura|generale|complessivo)?\s*[:\-]?\s*(.*)$/i;
 const VAT_NUMBER_ANYWHERE = /\b(IT)?\s?(\d{11})\b/i;
+
+// Rileva il facsimile ufficiale SDI (Agenzia delle Entrate): layout a due colonne
+// Cedente/prestatore (fornitore) | Cessionario/committente (cliente), molto diverso
+// dalle fatture "generiche" gestite dalle regole sopra.
+const SDI_FACSIMILE_MARKER = /cedente\/prestatore/i;
+
+// Le colonne fornitore/cliente vengono spesso lette dall'OCR sulla stessa riga:
+// "Denominazione: NOME1 Denominazione: NOME2" (una eventuale terza occorrenza,
+// tipica del "Terzo Intermediario", viene ignorata prendendo solo le prime due).
+function extractPairedLabelValues(text: string, label: string): string[] {
+  const regex = new RegExp(`${label}\\s*[:\\-]?\\s*([^\\n]+?)(?=\\s*(?:${label}|Regime fiscale|Indirizzo|Comune|Cap|$))`, "gim");
+  return [...text.matchAll(regex)].map((match) => match[1].trim()).filter(Boolean);
+}
+
+function extractVatNumbersSdi(text: string): string[] {
+  const regex = /Identificativo fiscale ai fini\s*IVA:\s*(IT)\s*(\d{11})/gi;
+  return [...text.matchAll(regex)].map((match) => `${match[1]}${match[2]}`.toUpperCase());
+}
+
+// "Data scadenza"/"Data termine" seguita, sulla stessa riga, dall'importo pagato:
+// è il modo più affidabile per ottenere insieme scadenza e totale documento in questo layout.
+function extractDueDateAndTotalSdi(text: string): { due_date: string | null; amount_total: number | null } {
+  const regex = /Data\s*(?:scadenza|termine)\s*[:\-]?\s*(\d{1,2}[-./]\d{1,2}[-./]\d{2,4})(?:[ \t]*([\d.,]+))?/gi;
+  const matches = [...text.matchAll(regex)];
+  const withAmount = matches.find((match) => match[2]);
+
+  if (withAmount) {
+    return { due_date: parseDate(withAmount[1]), amount_total: parseAmount(withAmount[2]) };
+  }
+  if (matches.length > 0) {
+    return { due_date: parseDate(matches[0][1]), amount_total: null };
+  }
+  return { due_date: null, amount_total: null };
+}
+
+// "Totale documento" (spesso letto dall'OCR come "Totaledocumento" o con la T iniziale
+// mancante) seguito, entro pochi caratteri, dall'importo.
+function extractAmountTotalFallbackSdi(text: string): number | null {
+  const match = text.match(/T?otale\s*documento[^\d]{0,20}([\d.,]+)/i);
+  return match ? parseAmount(match[1]) : null;
+}
+
+// Riga con il tipo documento ("TD01 fattura ...") seguita da numero e data, entrambi
+// spesso rumorosi via OCR: si estrae la prima riga contenente "fattura" e si isola la
+// data (se riconoscibile) e il testo restante come numero documento, best-effort.
+function extractInvoiceNumberAndDateSdi(text: string): { invoice_number: string | null; invoice_date: string | null } {
+  const line = text.split(/\r?\n/).find((candidate) => /fattura/i.test(candidate));
+  if (!line) return { invoice_number: null, invoice_date: null };
+
+  const dateMatch = line.match(/(\d{1,2}[-./]\d{1,2}[-./]\d{2,4})/);
+  const invoice_date = dateMatch ? parseDate(dateMatch[1]) : null;
+
+  const fatturaIndex = line.toLowerCase().indexOf("fattura");
+  let numberPart = fatturaIndex >= 0 ? line.slice(fatturaIndex + "fattura".length) : line;
+  if (dateMatch) {
+    const cutIndex = numberPart.indexOf(dateMatch[1]);
+    if (cutIndex >= 0) numberPart = numberPart.slice(0, cutIndex);
+  }
+
+  const invoice_number = cleanText(numberPart.replace(/[|_[\]]/g, " ").replace(/\s+/g, " "));
+  return { invoice_number, invoice_date };
+}
+
+// Aliquota IVA: cerca un numero seguito dal simbolo "%" (es. "22%"), l'unico pattern
+// che si è dimostrato affidabile in questo layout — le tabelle di riepilogo IVA senza
+// simbolo "%" sono troppo rumorose per essere lette in modo sicuro dopo l'OCR.
+function extractVatRateSdi(text: string): number | null {
+  const match = text.match(/\b(\d{1,2}(?:,\d{1,2})?)\s*%/);
+  return match ? parseFloat(match[1].replace(",", ".")) : null;
+}
+
+function parseSdiFacsimile(text: string): Partial<InvoiceExtraction> {
+  const denominazioni = extractPairedLabelValues(text, "Denominazione:");
+  const vatNumbers = extractVatNumbersSdi(text);
+  const { due_date, amount_total } = extractDueDateAndTotalSdi(text);
+  const { invoice_number, invoice_date } = extractInvoiceNumberAndDateSdi(text);
+
+  const issuer_name = denominazioni[0] ?? null;
+  const counterparty_name = denominazioni[1] ?? null;
+
+  let invoice_type: InvoiceExtraction["invoice_type"] = null;
+  if (containsSimi(counterparty_name)) invoice_type = "purchase";
+  else if (containsSimi(issuer_name)) invoice_type = "sale";
+
+  // La P.IVA "controparte" (rispetto a SIMI) è quella del fornitore per una fattura di
+  // acquisto, del cliente per una fattura di vendita; se non determinabile, quella del fornitore.
+  const counterparty_vat_number = invoice_type === "sale" ? (vatNumbers[1] ?? vatNumbers[0] ?? null) : (vatNumbers[0] ?? vatNumbers[1] ?? null);
+
+  return {
+    invoice_number,
+    invoice_type,
+    invoice_date,
+    due_date,
+    issuer_name,
+    counterparty_name,
+    counterparty_vat_number,
+    amount_total: amount_total ?? extractAmountTotalFallbackSdi(text),
+    vat_rate: extractVatRateSdi(text),
+  };
+}
 
 function parseInvoiceText(text: string): InvoiceExtraction {
   const result: InvoiceExtraction = {
@@ -82,6 +216,11 @@ function parseInvoiceText(text: string): InvoiceExtraction {
     amount_total: null,
     notes: null,
   };
+
+  const isSdiFacsimile = SDI_FACSIMILE_MARKER.test(text);
+  if (isSdiFacsimile) {
+    Object.assign(result, parseSdiFacsimile(text));
+  }
 
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
 
@@ -114,12 +253,15 @@ function parseInvoiceText(text: string): InvoiceExtraction {
       continue;
     }
 
-    if (result.issuer_name === null && (match = line.match(ISSUER_LINE))) {
+    // Le etichette generiche "fornitore"/"cliente" in questa riga sono affidabili solo nel
+    // formato "semplice" (Fornitore: X / Cliente: Y): nel facsimile SDI la stessa parola
+    // compare tra parentesi nell'intestazione a due colonne e produrrebbe un match errato.
+    if (!isSdiFacsimile && result.issuer_name === null && (match = line.match(ISSUER_LINE))) {
       result.issuer_name = cleanText(match[1]);
       continue;
     }
 
-    if (result.counterparty_name === null && (match = line.match(COUNTERPARTY_LINE))) {
+    if (!isSdiFacsimile && result.counterparty_name === null && (match = line.match(COUNTERPARTY_LINE))) {
       result.counterparty_name = cleanText(match[1]);
       continue;
     }
@@ -129,16 +271,18 @@ function parseInvoiceText(text: string): InvoiceExtraction {
       continue;
     }
 
-    if (result.counterparty_vat_number === null && (match = line.match(VAT_NUMBER_ANYWHERE))) {
+    if (!isSdiFacsimile && result.counterparty_vat_number === null && (match = line.match(VAT_NUMBER_ANYWHERE))) {
       result.counterparty_vat_number = `${match[1] ?? ""}${match[2]}`.toUpperCase();
       continue;
     }
   }
 
-  if (result.issuer_name && /simi/i.test(result.issuer_name)) {
-    result.invoice_type = "sale";
-  } else if (result.counterparty_name && /simi/i.test(result.counterparty_name)) {
-    result.invoice_type = "purchase";
+  if (!isSdiFacsimile) {
+    if (containsSimi(result.issuer_name)) {
+      result.invoice_type = "sale";
+    } else if (containsSimi(result.counterparty_name)) {
+      result.invoice_type = "purchase";
+    }
   }
 
   return result;
@@ -162,12 +306,24 @@ export async function extractInvoiceFromPdfAction(formData: FormData): Promise<E
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const pdf = await getDocumentProxy(new Uint8Array(buffer));
-    const { text } = await extractText(pdf, { mergePages: true });
+    let { text } = await extractText(pdf, { mergePages: true });
+    let usedOcr = false;
 
-    if (!text || text.trim().length < 10) {
+    if (!text || text.trim().length < MIN_TEXT_LENGTH) {
+      try {
+        text = await ocrExtractText(pdf);
+        usedOcr = true;
+      } catch (ocrError) {
+        console.error("Errore OCR fattura PDF:", ocrError);
+      }
+    }
+
+    if (!text || text.trim().length < MIN_TEXT_LENGTH) {
       return {
         success: false,
-        error: "Il PDF non contiene testo selezionabile (probabilmente una scansione): compila i campi manualmente.",
+        error: usedOcr
+          ? "Impossibile leggere il testo del PDF anche con OCR: compila i campi manualmente."
+          : "Il PDF non contiene testo selezionabile (probabilmente una scansione): compila i campi manualmente.",
       };
     }
 

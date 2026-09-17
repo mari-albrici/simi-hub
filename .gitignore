@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# tesseract.js OCR language data (should be cached in os.tmpdir(), ignored as a safety net)
+*.traineddata
+
+# scratch folder for local test files (e.g. sample invoices), never commit real business data
+/TEMP/

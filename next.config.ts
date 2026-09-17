@@ -9,6 +9,9 @@ const devOrigins = [
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: devOrigins,
+  // @napi-rs/canvas (native binding) e tesseract.js (worker/WASM) non vanno bundlati
+  // dal Server Components bundler: causano "non-ecmascript placeable asset" in build.
+  serverExternalPackages: ["@napi-rs/canvas", "tesseract.js", "unpdf"],
   experimental: {
     serverActions: {
       allowedOrigins: devOrigins,

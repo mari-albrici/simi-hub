@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createCompanyAction } from "@/lib/crud";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default function NewSupplierPage() {
   return (
@@ -51,7 +52,7 @@ export default function NewSupplierPage() {
           </div>
           <div className="col-md-12 d-flex align-items-end justify-content-end gap-2">
             <Link href="/fornitori" className="btn btn-outline-secondary">Annulla</Link>
-            <button type="submit" className="btn btn-dark">Salva</button>
+            <SubmitButton className="btn btn-dark">Salva</SubmitButton>
           </div>
         </form>
       </div>

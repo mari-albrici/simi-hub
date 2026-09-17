@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createProjectAction } from "@/lib/crud";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default function NewProjectPage() {
   return (
@@ -55,7 +56,7 @@ export default function NewProjectPage() {
           </div>
           <div className="col-md-6 d-flex align-items-end justify-content-end gap-2">
             <Link href="/commesse" className="btn btn-outline-secondary">Annulla</Link>
-            <button type="submit" className="btn btn-dark">Salva</button>
+            <SubmitButton className="btn btn-dark">Salva</SubmitButton>
           </div>
         </form>
       </div>

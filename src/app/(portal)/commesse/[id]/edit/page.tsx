@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProjectById } from "@/lib/data";
 import { updateProjectAction } from "@/lib/crud";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -65,7 +66,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
           </div>
           <div className="col-md-6 d-flex align-items-end justify-content-end gap-2">
             <Link href={`/commesse/${project.id}`} className="btn btn-outline-secondary">Annulla</Link>
-            <button type="submit" className="btn btn-dark">Salva modifiche</button>
+            <SubmitButton className="btn btn-dark" pendingLabel="Salvataggio…">Salva modifiche</SubmitButton>
           </div>
         </form>
       </div>

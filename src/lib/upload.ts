@@ -45,5 +45,56 @@ export async function uploadDocumentAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/documenti");
-  redirect("/documenti");
+  redirect(`/documenti?success=${encodeURIComponent("Documento caricato.")}`);
+}
+
+export async function updateDocumentAction(formData: FormData): Promise<void> {
+  const supabase = await createServerSupabaseClient();
+  const id = String(formData.get("id") ?? "");
+
+  if (!supabase || !id) {
+    redirect(`/documenti?error=${encodeURIComponent("Aggiornamento non riuscito.")}`);
+  }
+
+  const title = String(formData.get("title") ?? "").trim();
+  const expiryDate = String(formData.get("expiry_date") ?? "").trim();
+
+  const { error } = await supabase
+    .from("documents")
+    .update({
+      title: title || null,
+      expiry_date: expiryDate || null,
+    })
+    .eq("id", id);
+
+  if (error) {
+    redirect(`/documenti?error=${encodeURIComponent(`Aggiornamento fallito: ${error.message}`)}`);
+  }
+
+  revalidatePath("/documenti");
+  redirect(`/documenti?success=${encodeURIComponent("Documento aggiornato.")}`);
+}
+
+export async function deleteDocumentAction(formData: FormData): Promise<void> {
+  const supabase = await createServerSupabaseClient();
+  const id = String(formData.get("id") ?? "");
+
+  if (!supabase || !id) {
+    redirect(`/documenti?error=${encodeURIComponent("Eliminazione non riuscita.")}`);
+  }
+
+  const { data: doc } = await supabase.from("documents").select("storage_path").eq("id", id).maybeSingle();
+
+  if (doc?.storage_path) {
+    await supabase.storage.from("simi-documents").remove([String(doc.storage_path)]);
+  }
+
+  const { error } = await supabase.from("documents").delete().eq("id", id);
+
+  if (error) {
+    redirect(`/documenti?error=${encodeURIComponent(`Eliminazione fallita: ${error.message}`)}`);
+  }
+
+  revalidatePath("/documenti");
+  redirect(`/documenti?success=${encodeURIComponent("Documento eliminato.")}`);
 }

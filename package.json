@@ -11,12 +11,12 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
-    "ai": "^7.0.105",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
     "next": "16.3.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "unpdf": "^1.8.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {

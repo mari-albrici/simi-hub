@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { deleteProjectAction } from "@/lib/crud";
 import { getProjects } from "@/lib/data";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 
 export default async function ProjectsPage() {
   const projects = await getProjects();
@@ -80,12 +81,15 @@ export default async function ProjectsPage() {
                   <td><span className="badge text-bg-success">{project.status}</span></td>
                   <td className="text-end">
                     <div className="d-flex gap-2 justify-content-end">
+                      <Link href={`/commesse/${project.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>
                       <Link href={`/commesse/${project.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>
                       <form action={async () => {
                         "use server";
                         await deleteProjectAction(project.id);
                       }}>
-                        <button type="submit" className="btn btn-sm btn-outline-danger">Elimina</button>
+                        <ConfirmSubmitButton confirmMessage={`Eliminare la commessa ${project.project_code}?`} pendingLabel="Eliminazione…">
+                          Elimina
+                        </ConfirmSubmitButton>
                       </form>
                     </div>
                   </td>

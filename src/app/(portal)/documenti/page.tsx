@@ -1,8 +1,7 @@
 import { uploadDocumentAction } from "@/lib/upload";
 import { getDocuments } from "@/lib/data";
-import { formatDateIT, formatFileSize } from "@/lib/dashboard-helpers";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { DocumentsTable } from "@/components/documents/documents-table";
 
 type DocumentiSearchParams = { error?: string };
 
@@ -56,38 +55,7 @@ export default async function DocumentsPage({
           </div>
         </div>
       ) : (
-        <div className="app-card p-0">
-          <table className="table table-hover align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Nome file</th>
-                <th>Dimensione</th>
-                <th>Caricato il</th>
-                <th>Stato</th>
-                <th className="text-end">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc) => (
-                <tr key={doc.id}>
-                  <td>{doc.original_filename}</td>
-                  <td>{formatFileSize(doc.file_size)}</td>
-                  <td>{formatDateIT(doc.created_at)}</td>
-                  <td><StatusBadge status={doc.status} /></td>
-                  <td className="text-end">
-                    {doc.downloadUrl ? (
-                      <a href={doc.downloadUrl} className="btn btn-sm btn-outline-secondary" target="_blank" rel="noreferrer">
-                        Scarica
-                      </a>
-                    ) : (
-                      <span className="text-muted small">Non disponibile</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DocumentsTable documents={documents} />
       )}
     </>
   );

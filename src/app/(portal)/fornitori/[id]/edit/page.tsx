@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCompanyById } from "@/lib/data";
 import { updateCompanyAction } from "@/lib/crud";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function EditSupplierPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -61,7 +62,7 @@ export default async function EditSupplierPage({ params }: { params: Promise<{ i
           </div>
           <div className="col-md-12 d-flex align-items-end justify-content-end gap-2">
             <Link href={`/fornitori/${supplier.id}`} className="btn btn-outline-secondary">Annulla</Link>
-            <button type="submit" className="btn btn-dark">Salva modifiche</button>
+            <SubmitButton className="btn btn-dark" pendingLabel="Salvataggio…">Salva modifiche</SubmitButton>
           </div>
         </form>
       </div>

@@ -276,10 +276,12 @@ export async function getLegalEntities(): Promise<LegalEntityRecord[]> {
 export type DocumentRecord = {
   id: string;
   original_filename: string;
+  title: string | null;
   file_size: number | null;
   mime_type: string | null;
   status: string;
   created_at: string;
+  expiry_date: string | null;
   downloadUrl: string | null;
 };
 
@@ -307,10 +309,12 @@ export async function getDocuments(): Promise<DocumentRecord[]> {
       return {
         id: String(item.id),
         original_filename: String(item.original_filename ?? "-"),
+        title: item.title ? String(item.title) : null,
         file_size: item.file_size != null ? Number(item.file_size) : null,
         mime_type: item.mime_type ? String(item.mime_type) : null,
         status: String(item.status ?? "draft"),
         created_at: String(item.created_at ?? ""),
+        expiry_date: item.expiry_date ? String(item.expiry_date) : null,
         downloadUrl,
       };
     }),

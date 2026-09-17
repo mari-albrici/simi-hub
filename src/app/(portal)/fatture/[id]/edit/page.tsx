@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getInvoiceById } from "@/lib/data";
 import { updateInvoiceAction } from "@/lib/crud";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -72,7 +73,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           </div>
           <div className="col-md-8 d-flex align-items-end justify-content-end gap-2">
             <Link href={`/fatture/${invoice.id}`} className="btn btn-outline-secondary">Annulla</Link>
-            <button type="submit" className="btn btn-dark">Salva modifiche</button>
+            <SubmitButton className="btn btn-dark" pendingLabel="Salvataggio…">Salva modifiche</SubmitButton>
           </div>
         </form>
       </div>

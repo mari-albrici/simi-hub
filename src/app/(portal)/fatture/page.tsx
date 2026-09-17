@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { deleteInvoiceAction } from "@/lib/crud";
 import { getInvoices } from "@/lib/data";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 
 type FattureSearchParams = { type?: string; status?: string };
 
@@ -81,12 +82,15 @@ export default async function InvoicesPage({
                 <td><span className="badge text-bg-warning">{invoice.status}</span></td>
                 <td className="text-end">
                   <div className="d-flex gap-2 justify-content-end">
+                    <Link href={`/fatture/${invoice.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>
                     <Link href={`/fatture/${invoice.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>
                     <form action={async () => {
                       "use server";
                       await deleteInvoiceAction(invoice.id);
                     }}>
-                      <button type="submit" className="btn btn-sm btn-outline-danger">Elimina</button>
+                      <ConfirmSubmitButton confirmMessage={`Eliminare la fattura ${invoice.invoice_number}?`} pendingLabel="Eliminazione…">
+                        Elimina
+                      </ConfirmSubmitButton>
                     </form>
                   </div>
                 </td>

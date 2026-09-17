@@ -18,6 +18,10 @@ function toNullableDate(value: string | null | undefined): string | null {
   return value;
 }
 
+function withSuccess(path: string, message: string): string {
+  return `${path}?success=${encodeURIComponent(message)}`;
+}
+
 async function createProjectInSupabase(formData: FormData) {
   const supabase = await createServerSupabaseClient();
   if (!supabase) return false;
@@ -211,7 +215,7 @@ export async function createProjectAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/commesse");
-  redirect("/commesse");
+  redirect(withSuccess("/commesse", "Commessa creata."));
 }
 
 export async function updateProjectAction(formData: FormData): Promise<void> {
@@ -237,7 +241,7 @@ export async function updateProjectAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/commesse");
-  redirect("/commesse");
+  redirect(withSuccess("/commesse", "Modifiche salvate."));
 }
 
 export async function deleteProjectAction(id: string): Promise<void> {
@@ -248,7 +252,7 @@ export async function deleteProjectAction(id: string): Promise<void> {
   }
 
   revalidatePath("/commesse");
-  redirect("/commesse");
+  redirect(withSuccess("/commesse", "Commessa eliminata."));
 }
 
 export async function createInvoiceAction(formData: FormData): Promise<void> {
@@ -272,7 +276,7 @@ export async function createInvoiceAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/fatture");
-  redirect("/fatture");
+  redirect(withSuccess("/fatture", "Fattura creata."));
 }
 
 export async function updateInvoiceAction(formData: FormData): Promise<void> {
@@ -299,7 +303,7 @@ export async function updateInvoiceAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/fatture");
-  redirect("/fatture");
+  redirect(withSuccess("/fatture", "Modifiche salvate."));
 }
 
 export async function deleteInvoiceAction(id: string): Promise<void> {
@@ -310,7 +314,7 @@ export async function deleteInvoiceAction(id: string): Promise<void> {
   }
 
   revalidatePath("/fatture");
-  redirect("/fatture");
+  redirect(withSuccess("/fatture", "Fattura eliminata."));
 }
 
 export async function createCompanyAction(formData: FormData): Promise<void> {
@@ -334,16 +338,17 @@ export async function createCompanyAction(formData: FormData): Promise<void> {
     if (type === "customer") {
       customers.unshift(payload);
       revalidatePath("/clienti");
-      redirect("/clienti");
+      redirect(withSuccess("/clienti", "Cliente creato."));
     }
 
     suppliers.unshift(payload);
     revalidatePath("/fornitori");
-    redirect("/fornitori");
+    redirect(withSuccess("/fornitori", "Fornitore creato."));
   }
 
-  revalidatePath(String(formData.get("company_type") === "supplier" ? "/fornitori" : "/clienti"));
-  redirect(String(formData.get("company_type") === "supplier" ? "/fornitori" : "/clienti"));
+  const createdPath = String(formData.get("company_type") === "supplier" ? "/fornitori" : "/clienti");
+  revalidatePath(createdPath);
+  redirect(withSuccess(createdPath, formData.get("company_type") === "supplier" ? "Fornitore creato." : "Cliente creato."));
 }
 
 export async function updateCompanyAction(formData: FormData): Promise<void> {
@@ -372,7 +377,7 @@ export async function updateCompanyAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath(type === "supplier" ? "/fornitori" : "/clienti");
-  redirect(type === "supplier" ? "/fornitori" : "/clienti");
+  redirect(withSuccess(type === "supplier" ? "/fornitori" : "/clienti", "Modifiche salvate."));
 }
 
 export async function deleteCompanyAction(id: string, type: "customer" | "supplier") {
@@ -383,14 +388,14 @@ export async function deleteCompanyAction(id: string, type: "customer" | "suppli
     if (type === "supplier") {
       suppliers.splice(0, suppliers.length, ...next);
       revalidatePath("/fornitori");
-      redirect("/fornitori");
+      redirect(withSuccess("/fornitori", "Fornitore eliminato."));
     }
 
     customers.splice(0, customers.length, ...next);
   }
 
   revalidatePath(type === "supplier" ? "/fornitori" : "/clienti");
-  redirect(type === "supplier" ? "/fornitori" : "/clienti");
+  redirect(withSuccess(type === "supplier" ? "/fornitori" : "/clienti", type === "supplier" ? "Fornitore eliminato." : "Cliente eliminato."));
 }
 
 export async function makeUniqueSlug(value: string, collection: string[]) {

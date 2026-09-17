@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/constants";
 import { getSessionUser } from "@/lib/session";
 import { canAccessPage } from "@/lib/permissions";
+import { ToastNotifications } from "@/components/ui/toast-notifications";
 
 export default async function PortalLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const sessionUser = await getSessionUser();
@@ -107,6 +109,10 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
 
         <main className="flex-grow-1 p-4">{children}</main>
       </div>
+
+      <Suspense fallback={null}>
+        <ToastNotifications />
+      </Suspense>
     </div>
   );
 }

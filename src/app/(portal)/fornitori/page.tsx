@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { deleteCompanyAction } from "@/lib/crud";
 import { getCompaniesByType } from "@/lib/data";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 
 export default async function SuppliersPage() {
   const suppliers = await getCompaniesByType("supplier");
@@ -48,12 +49,15 @@ export default async function SuppliersPage() {
                   </td>
                   <td className="text-end">
                     <div className="d-flex gap-2 justify-content-end">
+                      <Link href={`/fornitori/${supplier.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>
                       <Link href={`/fornitori/${supplier.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>
                       <form action={async () => {
                         "use server";
                         await deleteCompanyAction(supplier.id, "supplier");
                       }}>
-                        <button type="submit" className="btn btn-sm btn-outline-danger">Elimina</button>
+                        <ConfirmSubmitButton confirmMessage={`Eliminare il fornitore "${supplier.business_name}"?`} pendingLabel="Eliminazione…">
+                          Elimina
+                        </ConfirmSubmitButton>
                       </form>
                     </div>
                   </td>

@@ -3,7 +3,8 @@
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { createInvoiceAction } from "@/lib/crud";
-import { extractInvoiceFromPdfAction, type InvoiceExtraction } from "@/lib/invoice-ai";
+import { extractInvoiceFromPdfAction, type InvoiceExtraction } from "@/lib/invoice-pdf-parser";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 interface FormValues {
   invoice_number: string;
@@ -102,7 +103,8 @@ export function NewInvoiceForm() {
         <h2 className="h5 mb-2">Lettura automatica da PDF</h2>
         <p className="text-muted small mb-3">
           Carica il PDF della fattura: i campi sottostanti verranno precompilati automaticamente
-          (data, intestatario, origine, totale, IVA, aliquota). Controlla sempre i dati prima di salvare.
+          (data, intestatario, origine, totale, IVA, aliquota) leggendo il testo del documento.
+          Funziona solo con PDF con testo selezionabile (non scansioni). Controlla sempre i dati prima di salvare.
         </p>
         <div className="d-flex align-items-center gap-3 flex-wrap">
           <input
@@ -276,7 +278,7 @@ export function NewInvoiceForm() {
           </div>
           <div className="col-12 d-flex align-items-end justify-content-end gap-2">
             <Link href="/fatture" className="btn btn-outline-secondary">Annulla</Link>
-            <button type="submit" className="btn btn-dark">Salva</button>
+            <SubmitButton className="btn btn-dark" pendingLabel="Salvataggio…">Salva</SubmitButton>
           </div>
         </form>
       </div>

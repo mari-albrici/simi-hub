@@ -43,10 +43,6 @@ export default function LoginPage() {
 
               <button type="submit" className="btn btn-dark w-100">Accedi</button>
             </form>
-
-            <div className="mt-4 small text-muted">
-              Domini autorizzati: <strong>simisrl.eu</strong>
-            </div>
           </div>
         </div>
       </div>

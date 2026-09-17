@@ -1,6 +1,14 @@
 import { uploadDocumentAction } from "@/lib/upload";
 
-export default function DocumentsPage() {
+type DocumentiSearchParams = { error?: string };
+
+export default async function DocumentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<DocumentiSearchParams>;
+}) {
+  const { error } = await searchParams;
+
   return (
     <><div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
         <div>
@@ -8,6 +16,8 @@ export default function DocumentsPage() {
           <p className="text-muted mb-0">Archivio documentale delle commesse e delle aziende.</p>
         </div>
       </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="app-card p-3 mb-4">
         <h2 className="h5 mb-3">Carica documento</h2>

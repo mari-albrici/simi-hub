@@ -60,6 +60,10 @@ Configurazione consigliata:
 - accesso tramite signed URLs
 - nessun URL pubblico permanente
 
+Applicare anche la migration `supabase/migrations/002_storage_documents_policies.sql`,
+che definisce le policy RLS di `storage.objects` per il bucket (senza queste policy
+un bucket privato rifiuta upload/lettura anche per utenti autenticati).
+
 ## Primo admin
 
 Dopo il primo login, creare l'utente con email aziendale autorizzata, ad esempio `admin@simi.it`.

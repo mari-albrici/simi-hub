@@ -1,73 +1,17 @@
 import { getAccessScope, requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { deleteProjectAction } from "@/lib/crud";
-import { getProjects } from "@/lib/data";
+import { getCompaniesByType, getLegalEntities, getProfileDirectory, searchProjects } from "@/lib/data";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 
-export default async function ProjectsPage() {
-  await requirePagePermission("project.read");
-  const access = await getAccessScope("project");
-  const projects = await getProjects();
-
-  return (
-    <>
-      <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
-        <div>
-          <h1 className="h3 mb-1">Commesse</h1>
-          <p className="text-muted mb-0">Gestione delle attività e delle commesse attive.</p>
-        </div>
-        {access.canCreate && <Link href="/commesse/new" className="btn btn-dark">+ Nuova</Link>}
-      </div>
-
-
-      <div className="app-card">
-        <div className="table-responsive">
-          <table className="table align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Codice</th>
-                <th>Commessa</th>
-                <th>Cliente</th>
-                <th>Paese</th>
-                <th>Località</th>
-                <th>Responsabile</th>
-                <th>Apertura</th>
-                <th>Stato</th>
-                <th className="text-end">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.length === 0 && <tr><td colSpan={9} className="text-muted py-4">Nessun record presente.</td></tr>}
-              {projects.map((project) => (
-                <tr key={project.id}>
-                  <td><Link href={`/commesse/${project.id}`} className="text-decoration-none fw-semibold">{project.project_code}</Link></td>
-                  <td>{project.name}</td>
-                  <td>{project.customer_name}</td>
-                  <td>{project.country}</td>
-                  <td>{project.city}</td>
-                  <td>{project.project_manager_name}</td>
-                  <td>{project.opening_date}</td>
-                  <td><span className="badge text-bg-success">{project.status}</span></td>
-                  <td className="text-end">
-                    <div className="d-flex gap-2 justify-content-end">
-                      <Link href={`/commesse/${project.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>
-                      {access.canUpdate && <Link href={`/commesse/${project.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>}
-                      {access.canDelete && <form action={async () => {
-                        "use server";
-                        await deleteProjectAction(project.id);
-                      }}>
-                        <ConfirmSubmitButton confirmMessage={`Archiviare la commessa ${project.project_code}?`} pendingLabel="Archiviazione…">
-                          Archivia
-                        </ConfirmSubmitButton>
-                      </form>}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </>
-  );
+const labels:Record<string,string>={draft:"Preparazione",active:"Attiva",suspended:"Sospesa",completed:"Completata",closed:"Chiusa",archived:"Archiviata"};
+export default async function ProjectsPage({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}) {
+  const user=await requirePagePermission("project.read"); const params=await searchParams; const access=await getAccessScope("project");
+  const [result,customers,entities,managers]=await Promise.all([searchProjects({q:params.q,legal_entity_id:params.entity,country:params.country,customer_id:params.customer,project_manager_id:params.mine==="1"?user.id:params.manager,status:params.status,date_from:params.from,date_to:params.to,page:Number(params.page||1),archived:params.archived==="1"}),getCompaniesByType("customer"),getLegalEntities(),getProfileDirectory()]);
+  const page=Math.max(1,Number(params.page||1)), link=(extra:Record<string,string>)=>{const q=new URLSearchParams(Object.entries({...params,...extra}).filter(([,v])=>!!v) as [string,string][]);return `/commesse?${q}`;};
+  return <>
+    <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap"><div><h1 className="h3 mb-1">Commesse</h1><p className="text-muted mb-0">Fascicolo operativo e amministrativo delle commesse.</p></div>{access.canCreate&&<Link href="/commesse/new" className="btn btn-primary"><i className="bi bi-plus-lg me-2"/>Nuova commessa</Link>}</div>
+    <form className="app-card p-3 mb-3 row g-2" method="get"><div className="col-md-3"><label className="form-label small">Ricerca</label><input name="q" defaultValue={params.q} className="form-control" placeholder="Numero, nome, cliente, luogo"/></div><div className="col-md-2"><label className="form-label small">Società</label><select name="entity" defaultValue={params.entity||""} className="form-select"><option value="">Tutte</option>{entities.map(x=><option key={x.id} value={x.id}>{x.business_name}</option>)}</select></div><div className="col-md-2"><label className="form-label small">Cliente</label><select name="customer" defaultValue={params.customer||""} className="form-select"><option value="">Tutti</option>{customers.map(x=><option key={x.id} value={x.id}>{x.business_name}</option>)}</select></div><div className="col-md-2"><label className="form-label small">Responsabile</label><select name="manager" defaultValue={params.manager||""} className="form-select"><option value="">Tutti</option>{managers.map(x=><option key={x.id} value={x.id}>{[x.first_name,x.last_name].filter(Boolean).join(" ")}</option>)}</select></div><div className="col-md-2"><label className="form-label small">Stato</label><select name="status" defaultValue={params.status||""} className="form-select"><option value="">Tutti</option>{Object.entries(labels).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></div><div className="col-md-1 d-flex align-items-end"><button className="btn btn-outline-secondary w-100">Filtra</button></div><div className="col-md-2"><label className="form-label small">Apertura da</label><input name="from" type="date" defaultValue={params.from} className="form-control"/></div><div className="col-md-2"><label className="form-label small">Apertura a</label><input name="to" type="date" defaultValue={params.to} className="form-control"/></div><div className="col-md-3 d-flex align-items-end gap-2"><Link href="/commesse" className="btn btn-link">Azzera filtri</Link><Link href={params.archived==="1"?"/commesse":"/commesse?archived=1"} className="btn btn-link">{params.archived==="1"?"Commesse attive":"Archiviate"}</Link></div></form>
+    <div className="app-card"><div className="table-responsive"><table className="table align-middle mb-0"><thead><tr><th>Numero</th><th>Denominazione</th><th>Società</th><th>Cliente</th><th>Luogo</th><th>Responsabile</th><th>Apertura</th><th>Fine prevista</th><th>Stato</th><th className="text-end">Azioni</th></tr></thead><tbody>{result.rows.length===0&&<tr><td colSpan={10} className="text-muted py-4">Nessuna commessa per i filtri selezionati.</td></tr>}{result.rows.map(project=><tr key={project.id}><td><Link href={`/commesse/${project.id}`} className="text-decoration-none fw-semibold">{project.project_code}</Link></td><td>{project.name}</td><td>{project.entity_name||project.country||"—"}</td><td>{project.customer_id?<Link href={`/clienti/${project.customer_id}`}>{project.customer_name}</Link>:"—"}</td><td>{project.city||"—"}</td><td>{project.project_manager_name||"—"}</td><td>{project.opening_date||"—"}</td><td>{project.expected_closing_date||"—"}</td><td><span className="badge text-bg-secondary">{labels[project.status]||project.status}</span></td><td className="text-end"><div className="d-flex gap-2 justify-content-end"><Link href={`/commesse/${project.id}`} className="btn btn-sm btn-outline-secondary">Apri</Link>{access.canUpdate&&<Link href={`/commesse/${project.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>}{access.canDelete&&<form action={async()=>{"use server";await deleteProjectAction(project.id);}}><ConfirmSubmitButton confirmMessage={`Archiviare la commessa ${project.project_code}?`} pendingLabel="Archiviazione…">Archivia</ConfirmSubmitButton></form>}</div></td></tr>)}</tbody></table></div><div className="d-flex justify-content-between p-3"><span className="text-muted">{result.count} commesse</span><div className="d-flex gap-2">{page>1&&<Link className="btn btn-sm btn-outline-secondary" href={link({page:String(page-1)})}>Precedente</Link>}{page*50<result.count&&<Link className="btn btn-sm btn-outline-secondary" href={link({page:String(page+1)})}>Successiva</Link>}</div></div></div>
+  </>;
 }

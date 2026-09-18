@@ -7,8 +7,9 @@ import { InvoiceForm } from "../invoice-form";
 // margine esplicito oltre al timeout interno di invoice-pdf-parser.ts (45s).
 export const maxDuration = 60;
 
-export default async function NewInvoicePage() {
+export default async function NewInvoicePage({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}) {
   await requirePagePermission("invoice.create");
+  const params=await searchParams;
   const [companies, legalEntities, projects] = await Promise.all([
     getAllCompanies(),
     getLegalEntities(),
@@ -25,7 +26,7 @@ export default async function NewInvoicePage() {
         </ol>
       </nav>
 
-      <InvoiceForm mode="create" companies={companies} legalEntities={legalEntities} projects={projects} />
+      <InvoiceForm mode="create" companies={companies} legalEntities={legalEntities} projects={projects} initialProjectId={params.project} />
     </>
   );
 }

@@ -13,3 +13,10 @@
 \ir migrations/009_phase1c_deadlines.sql
 \ir migrations/010_phase1d_documents.sql
 \ir migrations/011_admin_role_wildcard.sql
+\ir migrations/012_phase1e_projects.sql
+\ir migrations/013_phase1f_orders_delivery_notes.sql
+\ir migrations/014_phase1f_rbac.sql
+\ir migrations/015_phase1f_completion.sql
+\ir migrations/016_invoice_hotfix.sql
+\ir migrations/017_phase1f2_offers_contracts.sql
+\ir migrations/018_phase1g_relation_actions.sql

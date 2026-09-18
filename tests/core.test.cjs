@@ -59,11 +59,12 @@ test('financial balances derive in cents and overdue only on residual',()=>{
  assert.deepEqual(deriveFinancialState(0.1,0.1,null,'2026-02-01'),{allocated:0.1,residual:0,state:'paid'});
 });
 test('SQL and application permission matrices match exactly',()=>{
- const sql=fs.readFileSync('supabase/migrations/004_phase0_foundations.sql','utf8');
+ const sql=fs.readFileSync('supabase/migrations/014_phase1f_rbac.sql','utf8')+'\n'+fs.readFileSync('supabase/migrations/017_phase1f2_offers_contracts.sql','utf8');
  for(const [role,permissions] of Object.entries(PERMISSION_MATRIX)) {
   if (role === 'admin') continue; // Admin is an intentional wildcard in migration 011.
-  const match=sql.match(new RegExp(`WHEN '${role}' THEN permission = ANY\\(ARRAY\\[([^\\]]+)\\]\\)`));
-  assert.ok(match,role);assert.deepEqual([...match[1].matchAll(/'([^']+)'/g)].map(x=>x[1]).sort(),[...permissions].sort());
+  const matches=[...sql.matchAll(new RegExp(`WHEN '${role}' THEN permission = ANY\\(ARRAY\\[([^\\]]+)\\]\\)`, 'g'))];
+  assert.ok(matches.length,role);const found=[...new Set(matches.flatMap(match=>[...match[1].matchAll(/'([^']+)'/g)].map(x=>x[1])))];
+  assert.deepEqual(found.sort(),[...permissions].sort());
  }
  assert.match(fs.readFileSync('supabase/migrations/011_admin_role_wildcard.sql','utf8'),/WHEN 'admin' THEN true/);
 });
@@ -71,4 +72,37 @@ test('admin has current and future capability names without an email exception',
  const { hasPermission } = require('../src/lib/auth.ts');
  assert.equal(hasPermission('admin','future.module.create'),true);
  assert.equal(hasPermission('viewer','future.module.create'),false);
+});
+test('commercial permissions allow operational roles and restrict read-only roles',()=>{
+ const { hasPermission } = require('../src/lib/auth.ts');
+ for (const domain of ['order','delivery_note']) {
+  for (const role of ['administration','project_manager']) {
+   assert.equal(hasPermission(role,`${domain}.read`),true);
+   assert.equal(hasPermission(role,`${domain}.create`),true);
+   assert.equal(hasPermission(role,`${domain}.delete`),false);
+  }
+  for (const role of ['technical','management']) {
+   assert.equal(hasPermission(role,`${domain}.read`),true);
+   assert.equal(hasPermission(role,`${domain}.create`),false);
+  }
+  assert.equal(hasPermission('hr',`${domain}.read`),false);
+ }
+});
+test('invoice hotfix keeps signed decimal parsing and percentage discounts',()=>{
+ const { parseMonetaryAmount, parsePdfAmount } = require('../src/lib/money.ts');
+ const { invoiceLineAmounts } = require('../src/lib/invoice-calculations.ts');
+ assert.equal(parseMonetaryAmount('-1.234,56','it'),-1234.56);
+ assert.equal(parseMonetaryAmount('-1 234,56','fr'),-1234.56);
+ assert.equal(parseMonetaryAmount('-1,234.56','en'),-1234.56);
+ assert.equal(parseMonetaryAmount('(1.234,56)','it'),-1234.56);
+ assert.equal(parsePdfAmount('-1.234,56','it'),-1234.56);
+ assert.deepEqual(invoiceLineAmounts({quantity:1,unit_price:100,discount:10,vat_rate:22}),{net:90,vat:19.8,total:109.8});
+ assert.deepEqual(invoiceLineAmounts({quantity:-1,unit_price:100,discount:0,vat_rate:22}),{net:-100,vat:-22,total:-122});
+});
+test('invoice form sends projects and eSolver registration through the existing workflow',()=>{
+ const form=fs.readFileSync('src/app/(portal)/fatture/invoice-form.tsx','utf8');
+ const crud=fs.readFileSync('src/lib/crud.ts','utf8');
+ const page=fs.readFileSync('src/app/(portal)/fatture/page.tsx','utf8');
+ assert.match(form,/name="project_ids"/);assert.match(form,/esolver_registration_number/);assert.match(form,/discount/);
+ assert.match(crud,/esolver_registration_number/);assert.match(page,/esolver_registration_number/);
 });

@@ -1,0 +1,6 @@
+import Link from "next/link";
+import { requirePagePermission, getAccessScope } from "@/lib/permissions";
+import { searchProjects } from "@/lib/data";
+import { restoreProjectAction } from "@/lib/crud";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+export default async function ArchivedProjectsPage(){await requirePagePermission("project.read");const access=await getAccessScope("project");const result=await searchProjects({archived:true,pageSize:50});return <><div className="d-flex justify-content-between mb-3"><div><Link href="/commesse">← Commesse attive</Link><h1 className="h3">Commesse archiviate</h1></div></div><div className="app-card"><div className="table-responsive"><table className="table align-middle"><thead><tr><th>Numero</th><th>Denominazione</th><th>Cliente</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>{result.rows.map(p=><tr key={p.id}><td>{p.project_code}</td><td>{p.name}</td><td>{p.customer_name||"—"}</td><td>{p.status}</td><td>{access.canDelete&&<form action={async()=>{"use server";await restoreProjectAction(p.id);}}><ConfirmSubmitButton confirmMessage={`Ripristinare la commessa ${p.project_code}?`}>Ripristina</ConfirmSubmitButton></form>}</td></tr>)}{!result.rows.length&&<tr><td colSpan={5} className="text-muted">Nessuna commessa archiviata.</td></tr>}</tbody></table></div></div></>}

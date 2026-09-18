@@ -1,3 +1,4 @@
+import { decimalCents } from "./invoice-calculations";
 export type MoneyLocale = "it" | "fr" | "en";
 
 /** Strict monetary token parser. A lone separator followed by 3 digits requires an explicit locale. */
@@ -6,6 +7,11 @@ export function parseMonetaryAmount(input: string, locale?: MoneyLocale): number
   token = token.replace(/^(?:EUR|€)\s*/i, "").replace(/\s*(?:EUR|€)$/i, "").trim();
   // Also allow -€ 100,00, but never discard a sign or arbitrary surrounding text.
   token = token.replace(/^([+-])\s*(?:EUR|€)\s*/i, "$1");
+  if (/^\([^()]+\)$/.test(token)) {
+    token=token.slice(1,-1).trim();
+    if (/^[+-]/.test(token)) return null;
+    token="-"+token;
+  }
   if (!/^[+-]?\d[\d., ]*$/.test(token)) return null;
   const sign = token.startsWith("-") ? -1 : 1;
   token = token.replace(/^[+-]/, "");
@@ -35,12 +41,12 @@ export function parseMonetaryAmount(input: string, locale?: MoneyLocale): number
 }
 
 // Extract exactly one complete monetary token from a labelled PDF field.
-export function parsePdfAmount(raw: string | undefined, locale: MoneyLocale): number | null {
+export function parsePdfAmount(raw: string | undefined, locale?: MoneyLocale): number | null {
   if (!raw) return null;
   const normalized = raw.replace(/\u2212/g, "-");
-  const tokens = normalized.match(/[+-]?\s*(?:EUR\s*|€\s*)?\d[\d.,\u00a0\u202f ]*(?:EUR|€)?/gi);
+  const tokens = normalized.match(/\(\s*\d[\d.,\u00a0\u202f ]*\)|[+-]?\s*(?:EUR\s*|€\s*)?\d[\d.,\u00a0\u202f ]*(?:EUR|€)?/gi);
   if (!tokens || tokens.length !== 1) return null;
   return parseMonetaryAmount(tokens[0].trim(), locale);
 }
-export function cents(value: number) { return Math.round((value + Math.sign(value) * Number.EPSILON) * 100); }
+export function cents(value: number) { return decimalCents(value); }
 export function roundMoney(value: number) { return cents(value) / 100; }

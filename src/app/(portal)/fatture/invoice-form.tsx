@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { roundMoney } from "@/lib/money";
+import { invoiceLineAmounts } from "@/lib/invoice-calculations";
 import { createInvoiceAction, updateInvoiceAction } from "@/lib/crud";
 import { extractInvoiceFromPdfAction, type InvoiceExtraction } from "@/lib/invoice-pdf-parser";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -47,6 +47,7 @@ interface InvoiceRecord {
   id: string;
   updated_at: string;
   invoice_number: string;
+  esolver_registration_number?: string | null;
   invoice_type: "purchase" | "sale";
   status: string;
   legal_entity_id?: string | null;
@@ -91,9 +92,7 @@ function toNum(value: string): number {
 }
 
 function computeLine(line: LineRow) {
-  const net = roundMoney(toNum(line.quantity) * toNum(line.unit_price));
-  const vat = line.vat_exempt_reason ? 0 : roundMoney(net * (toNum(line.vat_rate) / 100));
-  return { net, vat, total: net + vat };
+  return invoiceLineAmounts({ quantity: toNum(line.quantity), unit_price: toNum(line.unit_price), discount: toNum(line.discount), vat_rate: line.vat_rate === "" ? null : toNum(line.vat_rate), vat_exempt_reason: line.vat_exempt_reason || null });
 }
 
 function emptyLine(): LineRow {
@@ -115,6 +114,7 @@ export function InvoiceForm({
   legalEntities,
   projects,
   embedded = false,
+  initialProjectId,
   onCancel,
 }: {
   mode: "create" | "edit";
@@ -123,11 +123,13 @@ export function InvoiceForm({
   legalEntities: LegalEntityOption[];
   projects: ProjectOption[];
   embedded?: boolean;
+  initialProjectId?: string;
   onCancel?: () => void;
   onSubmitted?: () => void;
 }) {
   const invoiceFormId=useId();
   const [invoiceNumber, setInvoiceNumber] = useState(invoice?.invoice_number ?? "");
+  const [esolverRegistrationNumber, setEsolverRegistrationNumber] = useState(invoice?.esolver_registration_number ?? "");
   const [invoiceType, setInvoiceType] = useState<"purchase" | "sale">(invoice?.invoice_type ?? "purchase");
   const [status, setStatus] = useState(invoice?.status ?? "to_register");
   const [legalEntityId, setLegalEntityId] = useState(invoice?.legal_entity_id ?? "");
@@ -146,7 +148,7 @@ export function InvoiceForm({
   const [currency, setCurrency] = useState(invoice?.currency ?? "EUR");
   const [vatTreatment, setVatTreatment] = useState(invoice?.vat_treatment ?? "");
   const [dueDate, setDueDate] = useState(invoice?.due_date ?? "");
-  const [projectIds, setProjectIds] = useState<string[]>(invoice?.project_ids ?? []);
+  const [projectIds, setProjectIds] = useState<string[]>(invoice?.project_ids ?? (initialProjectId ? [initialProjectId] : []));
   const [notes, setNotes] = useState(invoice?.notes ?? "");
 
   const [headerAmountNet, setHeaderAmountNet] = useState(String(invoice?.amount_net ?? 0));
@@ -265,14 +267,15 @@ export function InvoiceForm({
 
   const action = mode === "create" ? createInvoiceAction : updateInvoiceAction;
 
+  const [projectSearch, setProjectSearch] = useState("");
+
   return (
     <div className={embedded ? undefined : "mx-auto"} style={embedded ? undefined : { maxWidth: 1100 }}>
       {mode === "create" && (
         <div className="app-card p-4 mb-4">
           <h2 className="h5 mb-2">Lettura automatica da PDF</h2>
           <p className="text-muted small mb-3">
-            Carica il PDF della fattura: i campi verranno precompilati automaticamente. Se il PDF non ha testo
-            selezionabile viene tentato un OCR locale. Controlla sempre i dati prima di salvare.
+            Carica il PDF della fattura: i campi verranno precompilati automaticamente. Controlla sempre i dati prima di salvare.
           </p>
           <div className="d-flex align-items-center gap-3 flex-wrap">
             <input
@@ -309,6 +312,8 @@ export function InvoiceForm({
           <input type="hidden" name="vat_amount" value={displayVatAmount.toFixed(2)} />
           <input type="hidden" name="amount_total" value={displayAmountTotal.toFixed(2)} />
           <input type="hidden" name="currency" value={currency} />
+          <input type="hidden" name="esolver_registration_number" value={esolverRegistrationNumber} />
+          {projectIds.map(projectId => <input key={projectId} type="hidden" name="project_ids" value={projectId} />)}
           <input type="hidden" name="vat_treatment" value={vatTreatment} />
           <input type="hidden" name="received_date" value={receivedDate} />
           <input type="hidden" name="registration_date" value={registrationDate} />
@@ -345,7 +350,7 @@ export function InvoiceForm({
             <h2 className="h6 text-uppercase text-muted mb-2">Dati generali</h2>
           </div>
           <div className="col-md-3">
-            <label className="form-label">Nome / Numero</label>
+            <label className="form-label">Numero fattura</label>
             <input
               name="invoice_number"
               className="form-control"
@@ -373,7 +378,7 @@ export function InvoiceForm({
           <div className="col-md-3">
             <label className="form-label">Stato</label>
             <select name="status" className="form-select" value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="to_register">Da registrare</option>
+              <option value="to_register">Registrata</option>
               <option value="to_check">Da verificare</option>
               <option value="to_pay">Da pagare</option>
               <option value="scheduled">Programmata</option>
@@ -383,7 +388,7 @@ export function InvoiceForm({
             </select>
           </div>
           <div className="col-md-3">
-            <label className="form-label">Società SIMI</label>
+            <label className="form-label">Sede SIMI</label>
             <select
               name="legal_entity_id"
               className="form-select"
@@ -397,6 +402,7 @@ export function InvoiceForm({
               ))}
             </select>
           </div>
+          <div className="col-md-3"><label className="form-label">Prog. eSolver</label><input name="esolver_registration_number_visible" className="form-control" value={esolverRegistrationNumber} onChange={(event) => setEsolverRegistrationNumber(event.target.value)} maxLength={120} /></div>
 
           <div className="col-md-4">
             <label className="form-label">Data fattura</label>
@@ -495,26 +501,77 @@ export function InvoiceForm({
           <div className="col-12"><hr className="my-1" /></div>
           <div className="col-12">
             <h2 className="h6 text-uppercase text-muted mb-2">Commesse collegate</h2>
-            <div className="d-flex flex-wrap gap-3">
-              {projects.length === 0 && <span className="text-muted small">Nessuna commessa disponibile.</span>}
-              {projects.map((project) => (
-                <label key={project.id} className="form-check d-flex align-items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    name="project_ids"
-                    value={project.id}
-                    checked={projectIds.includes(project.id)}
-                    onChange={(event) =>
-                      setProjectIds((prev) =>
-                        event.target.checked ? [...prev, project.id] : prev.filter((id) => id !== project.id),
-                      )
-                    }
-                  />
-                  <span className="form-check-label small">{project.project_code} — {project.name}</span>
-                </label>
-              ))}
-            </div>
+
+<div className="dropdown">
+  <button
+    className="btn btn-outline-secondary dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center"
+    type="button"
+    data-bs-toggle="dropdown"
+    data-bs-auto-close="outside"
+    aria-expanded="false"
+  >
+    <span>
+      {projectIds.length === 0
+        ? "Seleziona commesse..."
+        : `${projectIds.length} commess${projectIds.length === 1 ? "a selezionata" : "e selezionate"}`}
+    </span>
+  </button>
+
+  <div
+    className="dropdown-menu w-100 p-3"
+    style={{ maxHeight: "350px", overflowY: "auto" }}
+  >
+    <input
+      type="search"
+      className="form-control mb-2"
+      placeholder="Cerca commessa..."
+      value={projectSearch}
+      onChange={(e) => setProjectSearch(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+    />
+
+    {projects.length === 0 ? (
+      <span className="dropdown-item-text text-muted small">
+        Nessuna commessa disponibile.
+      </span>
+    ) : (
+      projects
+        .filter((project) => {
+          const search = projectSearch.toLowerCase();
+
+          return (
+            project.project_code.toLowerCase().includes(search) ||
+            project.name.toLowerCase().includes(search)
+          );
+        })
+        .map((project) => (
+          <label
+            key={project.id}
+            className="dropdown-item d-flex align-items-center gap-2"
+            style={{ cursor: "pointer" }}
+          >
+            <input
+              type="checkbox"
+              className="form-check-input mt-0"
+              value={project.id}
+              checked={projectIds.includes(project.id)}
+              onChange={(event) => {
+                setProjectIds((prev) =>
+                  event.target.checked
+                    ? [...prev, project.id]
+                    : prev.filter((id) => id !== project.id),
+                );
+              }}
+            />
+
+            <span className="small">
+              <strong>{project.project_code}</strong> — {project.name}
+            </span>
+          </label>
+        ))
+    )}
+  </div>
+</div>
           </div>
 
           <div className="col-12"><hr className="my-1" /></div>
@@ -555,7 +612,7 @@ export function InvoiceForm({
                         <td>
                           <input type="number" step="0.01" className="form-control form-control-sm" value={line.unit_price} onChange={(event) => updateLine(line.key, { unit_price: event.target.value })} />
                         </td>
-                        <td><input type="number" min="0" max="100" step="0.01" className="form-control form-control-sm" value={line.discount} onChange={(event) => updateLine(line.key, { discount: event.target.value })} /></td>
+                        <td><input type="number" min="-100" max="100" step="0.01" className="form-control form-control-sm" value={line.discount} onChange={(event) => updateLine(line.key, { discount: event.target.value })} /></td>
                         <td>
                           <input type="number" step="0.01" className="form-control form-control-sm" value={line.vat_rate} disabled={Boolean(line.vat_exempt_reason)} onChange={(event) => updateLine(line.key, { vat_rate: event.target.value })} />
                         </td>
@@ -585,7 +642,7 @@ export function InvoiceForm({
             <label className="form-label">Imponibile</label>
             <input
               type="number"
-              min={0}
+              min={-999999999999.99}
               step="0.01"
               className="form-control"
               value={hasLines ? displayAmountNet.toFixed(2) : headerAmountNet}
@@ -601,7 +658,7 @@ export function InvoiceForm({
             <input
               name="vat_rate"
               type="number"
-              min={0}
+              min={-100}
               step="0.01"
               className="form-control"
               value={headerVatRate}
@@ -628,11 +685,11 @@ export function InvoiceForm({
           </div>
           <div className="col-md-3">
             <label className="form-label">IVA</label>
-            <input type="number" min={0} step="0.01" className="form-control" value={hasLines ? displayVatAmount.toFixed(2) : headerVatAmount} disabled={hasLines} onChange={(event) => setHeaderVatAmount(event.target.value)} />
+            <input type="number" min={-999999999999.99} step="0.01" className="form-control" value={hasLines ? displayVatAmount.toFixed(2) : headerVatAmount} disabled={hasLines} onChange={(event) => setHeaderVatAmount(event.target.value)} />
           </div>
           <div className="col-md-3 offset-md-9">
             <label className="form-label fw-semibold">Totale fattura</label>
-            <input type="number" min={0} step="0.01" className="form-control fw-semibold" value={hasLines ? displayAmountTotal.toFixed(2) : headerAmountTotal} disabled={hasLines} onChange={(event) => setHeaderAmountTotal(event.target.value)} />
+            <input type="number" min={-999999999999.99} step="0.01" className="form-control fw-semibold" value={hasLines ? displayAmountTotal.toFixed(2) : headerAmountTotal} disabled={hasLines} onChange={(event) => setHeaderAmountTotal(event.target.value)} />
           </div>
 
           <div className="col-12"><hr className="my-1" /></div>

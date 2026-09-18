@@ -34,7 +34,11 @@ export type PermissionName =
   | "deadline.write"
   | "dashboard.read"
   | "report.read"
-  | "profile.directory";
+  | "profile.directory"
+  | "order.read" | "order.create" | "order.update" | "order.delete"
+  | "delivery_note.read" | "delivery_note.create" | "delivery_note.update" | "delivery_note.delete"
+  | "offer.read" | "offer.create" | "offer.update" | "offer.archive"
+  | "contract.read" | "contract.create" | "contract.update" | "contract.archive";
 
 export type CompanyType = "customer" | "supplier" | "both";
 export type InvoiceType = "purchase" | "sale";
@@ -49,7 +53,7 @@ export type InvoiceStatus =
   | "anomaly"
   | "archived";
 
-export type ProjectStatus = "draft" | "active" | "suspended" | "completed" | "archived";
+export type ProjectStatus = "draft" | "active" | "suspended" | "completed" | "closed" | "archived";
 
 export type PaymentMethod = "bank_transfer" | "sepa_direct_debit" | "credit_card" | "check" | "cash" | "other";
 

@@ -1,4 +1,4 @@
-import { getCompaniesByType, getProfileDirectory, getLegalEntities } from "@/lib/data";
+import { getCompaniesByType, getProfileDirectory, getLegalEntities, getAllCompanyContacts } from "@/lib/data";
 import { requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,7 +8,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePagePermission("project.update");
-  const [customers, managers, entities] = await Promise.all([getCompaniesByType("customer"), getProfileDirectory(), getLegalEntities()]);
+  const [customers, managers, entities, contacts] = await Promise.all([getCompaniesByType("customer"), getProfileDirectory(), getLegalEntities(), getAllCompanyContacts()]);
   const { id } = await params;
   const project = await getProjectById(id);
 
@@ -43,6 +43,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
             <label className="form-label">Cliente</label>
             <select name="customer_id" className="form-select" defaultValue={project.customer_id ?? ""}><option value="">Non assegnato</option>{customers.map(item => <option key={item.id} value={item.id}>{item.business_name}</option>)}</select>
           </div>
+          <div className="col-md-6"><label className="form-label">Referente cliente</label><select name="customer_contact_id" className="form-select" defaultValue={project.customer_contact_id ?? ""}><option value="">Non assegnato</option>{contacts.filter(item=>!project.customer_id||item.company_id===project.customer_id).map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></div>
           <div className="col-md-6">
             <label className="form-label">Responsabile</label>
             <select name="project_manager_id" className="form-select" defaultValue={project.project_manager_id ?? ""}><option value="">Non assegnato</option>{managers.map(item => <option key={item.id} value={item.id}>{[item.first_name,item.last_name].filter(Boolean).join(" ")}</option>)}</select>
@@ -59,12 +60,19 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
           <div className="col-md-4">
             <label className="form-label">Stato</label>
             <select name="status" className="form-select" defaultValue={project.status}>
-              <option value="draft">Draft</option>
+              <option value="draft">Preparazione</option>
               <option value="active">Active</option>
               <option value="suspended">Suspended</option>
               <option value="completed">Completed</option>
+              <option value="closed">Chiusa</option>
             </select>
           </div>
+          <div className="col-md-4"><label className="form-label">Inizio previsto</label><input name="planned_start_date" type="date" className="form-control" defaultValue={project.planned_start_date ?? ""} /></div>
+          <div className="col-md-4"><label className="form-label">Fine prevista</label><input name="expected_closing_date" type="date" className="form-control" defaultValue={project.expected_closing_date ?? ""} /></div>
+          <div className="col-md-4"><label className="form-label">Inizio effettivo</label><input name="actual_start_date" type="date" className="form-control" defaultValue={project.actual_start_date ?? ""} /></div>
+          <div className="col-md-4"><label className="form-label">Fine effettiva</label><input name="closing_date" type="date" className="form-control" defaultValue={project.closing_date ?? ""} /></div>
+          <div className="col-12"><label className="form-label">Descrizione</label><textarea name="description" className="form-control" rows={2} defaultValue={project.description ?? ""}/></div>
+          <div className="col-12"><label className="form-label">Note</label><textarea name="notes" className="form-control" rows={2} defaultValue={project.notes ?? ""}/></div>
           <div className="col-md-6">
             <label className="form-label">Data apertura</label>
             <input name="opening_date" type="date" className="form-control" defaultValue={project.opening_date ?? ""} />

@@ -1,0 +1,2 @@
+import {requirePagePermission} from "@/lib/permissions"; import {getAllCompanies,getLegalEntities,getProjects} from "@/lib/data"; import {ContractForm} from "@/components/commercial/contract-form";
+export default async function NewContract(){await requirePagePermission("contract.create");return <><h1 className="h3 mb-3">Nuovo contratto</h1><ContractForm entities={await getLegalEntities()} companies={await getAllCompanies()} projects={await getProjects()}/></>}

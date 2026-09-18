@@ -38,7 +38,7 @@ async function saveInvoice(form: FormData, edit: boolean) {
   const newName = String(form.get("counterparty_new_name") ?? "").trim();
   const payload = invoiceSchema.parse({
     id: edit ? form.get("id") : undefined, expected_updated_at: edit ? form.get("expected_updated_at") : undefined,
-    invoice_type: type, invoice_number: form.get("invoice_number"), legal_entity_id: form.get("legal_entity_id"),
+    invoice_type: type, invoice_number: form.get("invoice_number"), legal_entity_id: form.get("legal_entity_id"), esolver_registration_number: form.get("esolver_registration_number") || "",
     counterparty_id: counterpartyId,
     new_counterparty: !counterpartyId && newName ? {
       company_type: type === "purchase" ? "supplier" : "customer", business_name: newName,
@@ -77,6 +77,7 @@ export async function saveFinancialMovementAction(form: FormData) {
 }); }
 export async function archiveFinancialMovementAction(id: string) { return mutation("/pagamenti", "Movimento archiviato.", async () => { const supabase=await authorizedClient("invoice.delete"); const result=await supabase.rpc("archive_financial_movement",{movement:uuidSchema.parse(id)}); checkDatabase(result.error,"Archiviazione movimento"); }); }
 export async function deleteProjectAction(id: string) { return mutation("/commesse", "Commessa archiviata.", () => archive("project", id, "project.delete")); }
+export async function restoreProjectAction(id: string) { return mutation("/commesse", "Commessa ripristinata.", async () => { const db=await authorizedClient("project.delete"); const r=await db.rpc("restore_project",{project_id:uuidSchema.parse(id)}); checkDatabase(r.error,"Ripristino commessa"); }); }
 export async function deleteCompanyAction(id: string, type: "customer" | "supplier") { return mutation(type === "supplier" ? "/fornitori" : "/clienti", "Anagrafica archiviata.", () => archive("company", id, "company.delete")); }
 async function saveProject(form: FormData, edit: boolean) {
   const supabase = await authorizedClient(edit ? "project.update" : "project.create");

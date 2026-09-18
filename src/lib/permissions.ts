@@ -24,9 +24,9 @@ export async function requirePagePermission(permission: PermissionName) {
   return user;
 }
 export const PAGE_PERMISSIONS: Record<string, PermissionName> = {
-  "/dashboard": "dashboard.read", "/commesse": "project.read", "/documenti": "document.read", "/fatture": "invoice.read",
+  "/dashboard": "dashboard.read", "/commesse": "project.read", "/documenti": "document.read", "/fatture": "invoice.read", "/offerte": "offer.read", "/contratti": "contract.read",
   "/clienti": "company.read", "/fornitori": "company.read", "/scadenze": "deadline.read", "/personale": "employee.read",
-  "/impostazioni": "admin.settings", "/aziende": "legal_entity.read", "/report": "report.read", "/pagamenti": "invoice.read",
+  "/impostazioni": "admin.settings", "/aziende": "legal_entity.read", "/report": "report.read", "/pagamenti": "invoice.read", "/ordini": "order.read", "/ddt": "delivery_note.read",
 };
 export async function canAccessPage(page: string) {
   const user = await getSessionUser();

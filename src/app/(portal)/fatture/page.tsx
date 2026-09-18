@@ -10,7 +10,7 @@ import { getInvoiceFinancialSummaries } from "@/lib/finance";
 // margine esplicito oltre al timeout interno di invoice-pdf-parser.ts (45s).
 export const maxDuration = 60;
 
-type FattureSearchParams = { type?: string; status?: string; financial?: string; search?: string; legal_entity_id?: string; company_id?: string; project_id?: string; date_from?: string; date_to?: string; due_from?: string; due_to?: string };
+type FattureSearchParams = { type?: string; esolver_registration_number?: string; status?: string; financial?: string; search?: string; legal_entity_id?: string; company_id?: string; project_id?: string; date_from?: string; date_to?: string; due_from?: string; due_to?: string };
 
 const STATUS_LABEL: Record<string, string> = {
   open: "aperte",
@@ -31,13 +31,14 @@ export default async function InvoicesPage({
   const status = params.status;
   const financialFilter = params.financial;
   const search = params.search?.trim() || undefined;
+  const esolver = params.esolver_registration_number?.trim() || undefined;
   const [invoices, legalEntities] = await Promise.all([
-    getInvoices({ type, status, search, legal_entity_id: params.legal_entity_id, company_id: params.company_id, project_id: params.project_id, date_from: params.date_from, date_to: params.date_to, due_from: params.due_from, due_to: params.due_to }),
+    getInvoices({ type, status, search, legal_entity_id: params.legal_entity_id, company_id: params.company_id, project_id: params.project_id, esolver_registration_number: esolver, date_from: params.date_from, date_to: params.date_to, due_from: params.due_from, due_to: params.due_to }),
     getLegalEntities(),
   ]);
   const financial = await getInvoiceFinancialSummaries(invoices.map(invoice => invoice.id));
   const displayedInvoices = financialFilter ? invoices.filter(invoice => financial.get(invoice.id)?.financialStatus === financialFilter) : invoices;
-  const hasFilter = Boolean(type || status || financialFilter || search || params.legal_entity_id || params.company_id || params.project_id || params.date_from || params.date_to || params.due_from || params.due_to);
+  const hasFilter = Boolean(type || status || financialFilter || search || esolver || params.legal_entity_id || params.company_id || params.project_id || params.date_from || params.date_to || params.due_from || params.due_to);
 
   return (
     <>
@@ -64,7 +65,7 @@ export default async function InvoicesPage({
 
       <div className="app-card p-3">
         <form className="row g-2 mb-3" method="get">
-          <div className="col-md-3"><label className="form-label small">Ricerca numero</label><input name="search" defaultValue={search ?? ""} className="form-control" /></div>
+          <div className="col-md-3"><label className="form-label small">Ricerca numero fattura</label><input name="search" defaultValue={search ?? ""} className="form-control" /></div><div className="col-md-2"><label className="form-label small">Prog. eSolver</label><input name="esolver_registration_number" defaultValue={esolver ?? ""} className="form-control" /></div>
           <div className="col-md-2"><label className="form-label small">Tipo</label><select name="type" defaultValue={type ?? ""} className="form-select"><option value="">Tutte</option><option value="purchase">Acquisto</option><option value="sale">Vendita</option></select></div>
           <div className="col-md-3"><label className="form-label small">Società SIMI</label><select name="legal_entity_id" defaultValue={params.legal_entity_id ?? ""} className="form-select"><option value="">Tutte</option>{legalEntities.map(e => <option key={e.id} value={e.id}>{e.business_name}</option>)}</select></div>
           <div className="col-md-2"><label className="form-label small">Stato finanziario</label><select name="financial" defaultValue={financialFilter ?? ""} className="form-select"><option value="">Tutti</option><option value="to_pay">Da pagare/incassare</option><option value="partial">Parziale</option><option value="paid">Saldata</option><option value="overdue">Scaduta</option></select></div>
@@ -74,7 +75,7 @@ export default async function InvoicesPage({
         <div className="table-responsive"><table className="table align-middle mb-0">
           <thead>
             <tr>
-              <th>Tipo</th><th>Numero</th>
+              <th>Tipo</th><th>Numero</th><th>Prog. eSolver</th>
               <th>Data</th>
               <th>Fornitore / Cliente</th>
               <th>Commessa</th>
@@ -88,10 +89,10 @@ export default async function InvoicesPage({
             </tr>
           </thead>
           <tbody>
-              {displayedInvoices.length === 0 && <tr><td colSpan={12} className="text-muted py-4"><p>{hasFilter ? "Nessuna fattura per i filtri selezionati." : "Nessuna fattura registrata."}</p>{access.canCreate && <NewInvoiceTrigger />}</td></tr>}
+              {displayedInvoices.length === 0 && <tr><td colSpan={13} className="text-muted py-4"><p>{hasFilter ? "Nessuna fattura per i filtri selezionati." : "Nessuna fattura registrata."}</p>{access.canCreate && <NewInvoiceTrigger />}</td></tr>}
             {displayedInvoices.map((invoice) => { const f = financial.get(invoice.id); return (
               <tr key={invoice.id}>
-                <td><span className={`badge ${invoice.invoice_type === "purchase" ? "text-bg-secondary" : "text-bg-info"}`}>{invoice.invoice_type === "purchase" ? "Acquisto" : "Vendita"}</span></td><td><Link href={`/fatture/${invoice.id}`} className="text-decoration-none fw-semibold">{invoice.invoice_number}</Link></td>
+                <td><span className={`badge ${invoice.invoice_type === "purchase" ? "text-bg-secondary" : "text-bg-info"}`}>{invoice.invoice_type === "purchase" ? "Acquisto" : "Vendita"}</span></td><td><Link href={`/fatture/${invoice.id}`} className="text-decoration-none fw-semibold">{invoice.invoice_number}</Link></td><td>{invoice.esolver_registration_number || "—"}</td>
                 <td>{invoice.invoice_date ?? "-"}</td>
                 <td>{invoice.customer_name}</td>
                 <td>{invoice.project_code}</td>

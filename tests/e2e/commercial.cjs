@@ -1,0 +1,44 @@
+const {chromium}=require(process.env.SIMI_PLAYWRIGHT_PATH||'/tmp/simi-ui-tools/node_modules/playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});const context=await browser.newContext({viewport:{width:1600,height:1000}});
+ const session=await (await fetch('http://127.0.0.1:55430/test-session')).json();
+ await context.addCookies([{name:'sb-127-auth-token',value:'base64-'+Buffer.from(JSON.stringify(session)).toString('base64url'),domain:'127.0.0.1',path:'/'}]);
+ const page=await context.newPage();page.setDefaultTimeout(30000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const base='http://127.0.0.1:3100';const suffix=Date.now().toString().slice(-7);
+ const section=name=>page.locator('section').filter({has:page.getByRole('heading',{name,exact:true})});
+ const save=async(name,route)=>{await page.getByRole('button',{name,exact:true}).click();await page.waitForURL(route,{timeout:60000});};
+ try{
+ await page.goto(base+'/ordini');await page.getByRole('link',{name:'Nuovo ordine',exact:true}).click();
+ await page.getByLabel('Numero ordine',{exact:true}).fill('E2E-'+suffix);await page.getByLabel('Data',{exact:true}).fill('2026-09-18');
+ await page.getByLabel('Società SIMI',{exact:true}).selectOption({label:'SIMI-IT — SIMI Italia'});
+ await page.getByLabel('Controparte',{exact:true}).selectOption('25000000-0000-4000-8000-000000000001');
+ await page.getByLabel('Descrizione riga 1',{exact:true}).fill('Materiale E2E');await page.getByLabel('Quantità riga 1',{exact:true}).fill('100');await page.getByLabel('Prezzo unitario riga 1',{exact:true}).fill('10');
+ await page.getByLabel('Commessa riga 1',{exact:true}).selectOption('35000000-0000-4000-8000-000000000001');
+ await save('Salva ordine',/\/ordini\/[a-f0-9-]+\?success/);const orderUrl=page.url().split('?')[0];console.log('PASS UI create order',orderUrl);
+ await page.getByRole('link',{name:'Modifica',exact:true}).click();await page.getByLabel('Note',{exact:true}).fill('Modifica intestazione E2E');await save('Salva ordine',/\/ordini\/[a-f0-9-]+\?success/);assert.match(await page.locator('main').innerText(),/Modifica intestazione E2E/);console.log('PASS UI edit order');
+ await page.getByRole('link',{name:'Crea DDT',exact:true}).click();await page.getByLabel('Numero DDT',{exact:true}).fill('DDT-'+suffix);await page.getByLabel('Data',{exact:true}).fill('2026-09-18');
+ assert.equal(await page.getByLabel('Quantità riga 1',{exact:true}).inputValue(),'100');await page.getByLabel('Quantità riga 1',{exact:true}).fill('40');
+ await save('Salva DDT',/\/ddt\/[a-f0-9-]+\?success/);const noteUrl=page.url().split('?')[0];console.log('PASS UI create DDT from order');
+ await page.getByRole('link',{name:'Modifica',exact:true}).click();await page.getByLabel('Destinazione',{exact:true}).fill('Cantiere E2E');
+ await page.getByLabel('Ordine riga 1',{exact:true}).selectOption(orderUrl.split('/').pop());
+ const option=await page.getByLabel('Riga ordine 1',{exact:true}).locator('option').last().getAttribute('value');await page.getByLabel('Riga ordine 1',{exact:true}).selectOption(option);
+ await save('Salva DDT',/\/ddt\/[a-f0-9-]+\?success/);assert.match(await page.locator('main').innerText(),/Cantiere E2E/);console.log('PASS UI select order line and edit DDT');
+ await section('Fatture collegate').getByLabel('Fattura compatibile').selectOption('65000000-0000-4000-8000-000000000001');await section('Fatture collegate').getByRole('button',{name:'Collega fattura',exact:true}).click();await page.waitForURL(/success=Collegamento/);assert.equal(await section('Fatture collegate').getByRole('link',{name:'E2E-INV',exact:true}).count(),1);console.log('PASS UI DDT invoice relation');
+ await page.goto(orderUrl);assert.match(await page.locator('main').innerText(),/Parzialmente evaso/);
+ await section('Fatture collegate').getByLabel('Fattura compatibile').selectOption('65000000-0000-4000-8000-000000000001');await section('Fatture collegate').getByLabel('Importo attribuito (EUR)',{exact:true}).fill('100');await section('Fatture collegate').getByRole('button',{name:'Collega fattura',exact:true}).click();await page.waitForURL(/success=Collegamento/);console.log('PASS UI order invoice relation');
+ await section('Fatture collegate').getByRole('link',{name:'E2E-INV',exact:true}).click();await page.getByRole('heading',{name:'Ciclo documentale',exact:true}).waitFor();assert.equal(await section('Ciclo documentale').getByRole('link',{name:'E2E-'+suffix,exact:true}).count(),1);assert.equal(await section('Ciclo documentale').getByRole('link',{name:'DDT-'+suffix,exact:true}).count(),1);console.log('PASS UI invoice backlinks');
+ await page.goto(orderUrl);await section('Documenti').getByRole('link',{name:'Carica documento',exact:true}).click();await page.getByLabel('Titolo',{exact:true}).fill('Allegato E2E '+suffix);
+ const pdf=Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF\n'+suffix);
+ await page.locator('input[type=file]').setInputFiles({name:'ordine.pdf',mimeType:'application/pdf',buffer:pdf});await save('Carica documento',/\/documenti\/[a-f0-9-]+\?success/);const docUrl=page.url().split('?')[0];console.log('PASS UI order native upload');
+ await page.getByRole('link',{name:'Nuova versione',exact:true}).click();await page.locator('input[type=file]').setInputFiles({name:'firmato.pdf',mimeType:'application/pdf',buffer:Buffer.concat([pdf,Buffer.from('signed')])});await save('Carica nuova versione',/\/documenti\/[a-f0-9-]+\?success/);await page.getByRole('heading',{name:'Versione corrente — 2',exact:true}).waitFor();console.log('PASS UI versioning');
+ await page.goto(noteUrl);await section('Documenti').getByRole('link',{name:'Carica documento',exact:true}).click();await page.locator('input[type=file]').setInputFiles({name:'ddt.pdf',mimeType:'application/pdf',buffer:pdf});await page.getByRole('button',{name:'Carica documento',exact:true}).click();await page.getByText("Questo file risulta già presente nell'archivio.",{exact:true}).waitFor();await page.getByRole('button',{name:'Usa questo documento e aggiungi i collegamenti',exact:true}).click();await page.waitForURL(docUrl+'?success=Documento%20salvato');console.log('PASS UI duplicate reuse on DDT without new physical file');
+ await page.goto(noteUrl);assert.equal(await section('Documenti').getByRole('link',{name:'Allegato E2E '+suffix,exact:true}).count(),1);
+ await page.goto(base+'/commesse/35000000-0000-4000-8000-000000000001');await page.getByRole('heading',{name:'Ordini e DDT della commessa',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'E2E-'+suffix,exact:true}).count(),1);assert.equal(await page.getByRole('link',{name:'DDT-'+suffix,exact:true}).count(),1);
+ await page.getByRole('link',{name:'Nuovo DDT',exact:true}).click();assert.equal(await page.getByLabel('Commessa riga 1',{exact:true}).inputValue(),'35000000-0000-4000-8000-000000000001');console.log('PASS UI project DDT prefill');
+ await page.goto(base+'/commesse/35000000-0000-4000-8000-000000000001');await page.getByRole('link',{name:'Nuovo ordine',exact:true}).click();assert.equal(await page.getByLabel('Commessa riga 1',{exact:true}).inputValue(),'35000000-0000-4000-8000-000000000001');console.log('PASS UI project order prefill');
+ await page.goto(noteUrl);page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Archivia',exact:true}).click();await page.waitForURL(/success=Record/);
+ await page.goto(orderUrl);assert.match(await page.locator('main').innerText(),/Confermato \/ non evaso/);console.log('PASS UI archive DDT and recompute order');
+ await page.screenshot({path:'/tmp/simi-1fb-order.png',fullPage:true});assert.deepEqual(errors,[]);console.log('PASS all browser journeys');
+ }catch(e){console.error('URL',page.url());console.error((await page.locator('body').innerText()).slice(-10000));await page.screenshot({path:'/tmp/simi-1fb-failure.png',fullPage:true});throw e;}finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -7,6 +7,7 @@ import { NewInvoiceTrigger } from "./new-invoice-trigger";
 import { getInvoiceFinancialSummaries } from "@/lib/finance";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { statusLabel } from "@/lib/status";
+import { formatDate,formatMoney } from "@/lib/formatters";
 
 // Il workflow PDF rimane nella pagina dedicata con InvoiceForm.
 // margine esplicito oltre al timeout interno di invoice-pdf-parser.ts (45s).
@@ -74,7 +75,7 @@ export default async function InvoicesPage({
           <div className="col-md-2 d-flex align-items-end"><button className="btn btn-outline-primary w-100" type="submit"><i className="bi bi-funnel me-1" />Filtra</button></div>
           <div className="col-md-3"><label className="form-label small">Data documento da</label><input name="date_from" type="date" defaultValue={params.date_from ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Data documento a</label><input name="date_to" type="date" defaultValue={params.date_to ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Scadenza da</label><input name="due_from" type="date" defaultValue={params.due_from ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Scadenza a</label><input name="due_to" type="date" defaultValue={params.due_to ?? ""} className="form-control" /></div>
         </form>
-        <div className="table-responsive"><table className="table align-middle mb-0">
+        <div className="table-responsive"><table className="table table-admin align-middle mb-0">
           <thead>
             <tr>
               <th>Tipo</th><th>Numero</th><th>Prog. eSolver</th>
@@ -95,11 +96,11 @@ export default async function InvoicesPage({
             {displayedInvoices.map((invoice) => { const f = financial.get(invoice.id); return (
               <tr key={invoice.id}>
                 <td><span className={`badge ${invoice.invoice_type === "purchase" ? "text-bg-secondary" : "text-bg-info"}`}>{invoice.invoice_type === "purchase" ? "Acquisto" : "Vendita"}</span></td><td><Link href={`/fatture/${invoice.id}`} className="text-decoration-none fw-semibold">{invoice.invoice_number}</Link></td><td>{invoice.esolver_registration_number || "—"}</td>
-                <td>{invoice.invoice_date ?? "-"}</td>
+                <td className="col-date">{formatDate(invoice.invoice_date)}</td>
                 <td>{invoice.customer_name}</td>
                 <td>{invoice.project_code}</td>
                 <td>{invoice.company_name}</td>
-                <td>€ {invoice.amount_total.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td className="col-money">{formatMoney(invoice.amount_total, invoice.currency)}</td>
                 <td>{f?.paid.toFixed(2)} {invoice.currency}</td>
                 <td>{f?.residual.toFixed(2)} {invoice.currency}</td>
                 <td>{invoice.due_date ?? "-"}</td>

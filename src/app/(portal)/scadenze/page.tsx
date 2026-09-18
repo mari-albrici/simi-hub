@@ -3,7 +3,8 @@ import { requirePagePermission } from "@/lib/permissions";
 import { hasPermission } from "@/lib/auth";
 import { getDeadlines,deadlineOptions,deadlineHref,type Deadline } from "@/lib/deadlines";
 import { temporalLabels,priorityLabels } from "@/lib/deadline-validation";
-const money=(n:number|null,c:string|null)=>n===null?"—":new Intl.NumberFormat("it-IT",{style:"currency",currency:c||"EUR"}).format(n);
+import { formatDate,formatMoney } from "@/lib/formatters";
+const money=(n:number|null,c:string|null)=>formatMoney(n,c||"EUR");
 export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
  const user=await requirePagePermission("deadline.read"),p=await searchParams;
  const [{rows,count,filters:f,month},o]=await Promise.all([getDeadlines(p),deadlineOptions()]);
@@ -15,7 +16,7 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
  return <><div className="d-flex justify-content-between mb-3"><h1 className="h3">Scadenze</h1>{hasPermission(user.role,"deadline.write")&&<Link className="btn btn-primary" href="/scadenze/new"><i className="bi bi-plus-lg me-2"/>Nuova scadenza</Link>}</div>
  {p.error&&<p role="alert" className="alert alert-danger">{p.error}</p>}{p.success&&<p className="alert alert-success">{p.success}</p>}
  <div className="d-flex gap-2 flex-wrap mb-3">{[["today","Oggi"],["7","Prossimi 7 giorni"],["30","Prossimi 30 giorni"],["overdue","Scadute"],["all","Tutte"]].map(([id,label])=><Link key={id} className={`btn btn-sm btn-outline-primary ${f.period===id?"active":""}`} href={href({period:id})}>{label}</Link>)}<Link className="btn btn-sm btn-outline-secondary" href={href({mine:f.mine?"":"1"})}>{f.mine?"Tutti i responsabili":"Le mie scadenze"}</Link></div>
- <form className="app-card p-3 mb-3"><div className="row g-2">
+ <form className="filter-toolbar mb-3"><div className="row g-2 align-items-end">
  <input type="hidden" name="period" value={f.period}/><input type="hidden" name="mine" value={f.mine}/>
  {[["q","Ricerca","search"],["from","Dal","date"],["to","Al","date"]].map(([name,label,type])=><div className="col-md-3" key={name}><label className="form-label small" htmlFor={name}>{label}</label><input id={name} name={name} type={type} className="form-control form-control-sm" defaultValue={p[name]}/></div>)}
  {select("entity","Società SIMI",o.entities.map(x=>({id:x.id,label:x.business_name})))}

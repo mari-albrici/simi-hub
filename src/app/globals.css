@@ -223,6 +223,23 @@ a:hover .kpi-card {
   color: var(--simi-muted);
 }
 
+.table-admin { table-layout: fixed; width: 100%; }
+.table-admin th, .table-admin td { padding: 0.65rem 0.8rem; vertical-align: middle; }
+.table-admin .col-date, .table-admin .col-money, .table-admin .col-status { white-space: nowrap; width: 1%; }
+.table-admin .col-money { text-align: right; font-variant-numeric: tabular-nums; }
+.table-admin .col-description { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-admin .col-description a { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.table-admin .badge { white-space: nowrap; }
+.table:not(.table-admin) th, .table:not(.table-admin) td { vertical-align: middle; }
+.table td:nth-child(n+1) { max-width: 28rem; }
+.filter-toolbar { background: var(--simi-surface-secondary); border: 1px solid var(--simi-border); border-radius: var(--simi-radius-md); padding: 0.8rem 1rem; }
+.filter-toolbar .form-label { margin-bottom: 0.25rem; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; white-space: nowrap; }
+.page-loading { min-height: 40vh; display: grid; place-items: center; }
+.sidebar .nav-link { padding: 0.55rem 0.75rem; font-size: 0.92rem; }
+.topbar { min-height: 3.75rem; }
+h1.h3 { font-size: 1.55rem; letter-spacing: -0.01em; }
+
 .empty-state {
   padding: 2.5rem 1rem;
   text-align: center;

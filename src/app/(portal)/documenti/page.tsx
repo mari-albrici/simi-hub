@@ -9,7 +9,7 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
  const select=(name:string,label:string,rows:{id:string;label:string}[])=><div className="col-md-3" key={name}><label className="form-label small" htmlFor={name}>{label}</label><select className="form-select form-select-sm" id={name} name={name} defaultValue={p[name]||(name==="sort"?"created_at":"")}>{name!=="sort"&&<option value="">Tutti</option>}{rows.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></div>;
  const href=(page:number)=>`/documenti?${new URLSearchParams({...Object.fromEntries(Object.entries(p).filter((e):e is [string,string]=>!!e[1])),page:String(page)})}`;
  return <><div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3"><h1 className="h3">Documenti</h1>{access.canUpload&&<UploadDocumentTrigger/>}</div>{p.error&&<p role="alert" className="alert alert-danger">{p.error}</p>}
- <form className="app-card p-3 mb-3"><div className="row g-2">
+ <form className="filter-toolbar mb-3"><div className="row g-2">
  {[['q','Ricerca','search'],['country','Paese','text'],['from','Data documento dal','date'],['to','Al','date']].map(([name,label,type])=><div key={name} className="col-md-3"><label className="form-label small" htmlFor={name}>{label}</label><input id={name} name={name} type={type} className="form-control form-control-sm" defaultValue={p[name]}/></div>)}
  {select("category","Categoria",o.categories.map(x=>({id:x.id,label:`${x.code} — ${x.name}`})))}
  {select("entity","Società SIMI",o.entities.map(x=>({id:x.id,label:x.business_name})))}

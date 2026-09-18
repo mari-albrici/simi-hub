@@ -43,6 +43,18 @@ test('loading feedback is shared, localized and retryable',()=>{
  assert.match(upload,/Caricamento documento/);assert.match(upload,/aria-busy=\{pending\}/);
  assert.match(pdf,/Caricamento PDF/);assert.match(pdf,/Impossibile caricare il PDF/);assert.match(pdf,/Riprova/);assert.match(pdf,/onError/);
 });
+
+test('administrative density uses Italian formatters and compact table patterns',()=>{
+ const formatters=read('src/lib/formatters.ts');
+ const table=read('src/components/documents/documents-table.tsx');
+ const docs=read('src/app/(portal)/documenti/page.tsx');
+ const layout=read('src/app/(portal)/layout.tsx');
+ const css=read('src/app/globals.css');
+ assert.match(formatters,/it-IT/);assert.match(formatters,/formatDate/);assert.match(formatters,/formatMoney/);
+ assert.match(table,/table-admin/);assert.match(table,/col-date/);assert.match(table,/col-status/);
+ assert.match(docs,/filter-toolbar/);assert.doesNotMatch(layout,/Ricerca globale non ancora disponibile/);
+ assert.match(css,/white-space: nowrap/);assert.match(css,/text-overflow: ellipsis/);assert.match(css,/col-money/);
+});
 test('loading and server error feedback are wired',()=>{
  const upload=read('src/components/documents/upload-document-form.tsx');
  const invoice=read('src/components/ui/submit-button.tsx');

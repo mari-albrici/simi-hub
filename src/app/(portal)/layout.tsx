@@ -57,14 +57,7 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
             </button>
           </div>
 
-          <div className="flex-grow-1 d-flex justify-content-center">
-            <div className="input-group wide-search">
-             <span className="input-group-text bg-white">
-  <i className="bi bi-search"></i>
-</span>
-              <input className="form-control" type="search" placeholder="Ricerca globale non ancora disponibile" aria-label="Cerca" disabled />
-            </div>
-          </div>
+          <div className="flex-grow-1" />
 
           <div className="dropdown">
             <button className="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">

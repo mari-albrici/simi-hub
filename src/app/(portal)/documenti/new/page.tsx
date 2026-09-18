@@ -11,8 +11,10 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
  if(pipelineKind && !p.category_id) p.category_id=options.categories.find(c=>c.code===(pipelineKind==="offer"?"02":"01"))?.id??"";
  if(cycle){await requirePagePermission(`${kind!}.update`);p.entity=cycle.legal_entity_id;p.category_id=options.categories.find(c=>c.code===(kind==="order"?"01":"06"))?.id??"";p.title=`${kind==="order"?"Ordine":"DDT"} ${cycle.order_number??cycle.note_number}`;p.document_date=cycle.order_date??cycle.note_date??"";}
  const employee=p.employee?await (await import("@/lib/permissions")).authorizedClient("employee.hr.read").then(db=>db.from("employees").select("legal_entity_id").eq("id",p.employee).maybeSingle()):null;
+ const invoice=p.invoice?await (await import("@/lib/permissions")).authorizedClient("invoice.update").then(db=>db.from("invoices").select("invoice_number,legal_entity_id").eq("id",p.invoice).is("archived_at",null).maybeSingle()):null;
  if(p.employee){p.category_id=options.categories.find(c=>c.code==="HR-IDENTITY")?.id??p.category_id;p.access_scope="hr";}
- const entity=p.entity||employee?.data?.legal_entity_id||options.projects.find(x=>x.id===p.project)?.legal_entity_id||options.invoices.find(x=>x.id===p.invoice)?.legal_entity_id||"";
+ if(p.invoice){p.category_id=options.categories.find(c=>c.code==="07")?.id??p.category_id;p.entity=invoice?.data?.legal_entity_id??p.entity;p.title=`Fattura ${invoice?.data?.invoice_number??""}`;}
+ const entity=p.entity||employee?.data?.legal_entity_id||invoice?.data?.legal_entity_id||options.projects.find(x=>x.id===p.project)?.legal_entity_id||options.invoices.find(x=>x.id===p.invoice)?.legal_entity_id||"";
  const scopes=["general",...(["admin","administration","management"].includes(user.role)?["restricted"]:[]),...(hasPermission(user.role,"employee.hr.read")?["hr"]:[])];
  return <><h1 className="h3">Carica documento</h1><UploadDocumentForm options={options} values={{...p,legal_entity_id:entity}} scopes={scopes}/></>;
 }

@@ -9,7 +9,7 @@ export type ArchiveDocument={id:string;title:string|null;description:string|null
 export type DocumentVersion={id:string;document_id:string;version_number:number;original_filename:string;normalized_filename:string|null;stored_filename:string;storage_path:string;mime_type:string|null;file_size:number|null;content_hash:string|null;file_state:string;label:string|null;notes:string|null;created_by:string|null;created_at:string};
 export async function searchDocuments(params:Record<string,string|undefined>={}){
  const f=documentFilterSchema.parse(params),db=await authorizedClient("document.read");
- let q=db.from("document_register").select("*",{count:"exact"});
+ let q=db.from("general_document_register").select("*",{count:"exact"});
  if(f.status!=="archived")q=q.is("archived_at",null);
  if(f.q)q=q.ilike("search_text",`%${f.q.replace(/[%_\\]/g,"\\$&")}%`);
  for(const [key,value] of [["legal_entity_id",f.entity],["country",f.country],["display_status",f.status]])if(key&&value)q=q.eq(key,value);

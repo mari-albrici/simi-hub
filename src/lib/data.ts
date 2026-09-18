@@ -151,7 +151,7 @@ export async function getInvoiceById(id: string) {
 export type LegalEntityRecord = { id: string; code: string; business_name: string; country: string | null; email: string | null; phone: string | null; active: boolean };
 export async function getLegalEntities(): Promise<LegalEntityRecord[]> {
   const db = await authorizedClient("legal_entity.read");
-  return (await readAll((a,b) => db.from("legal_entities").select("*").order("id").range(a,b))).map(r => ({ id: String(r.id), code: String(r.code), business_name: String(r.business_name), country: stringOrNull(r.country), email: stringOrNull(r.email), phone: stringOrNull(r.phone), active: Boolean(r.active) }));
+  return (await readAll((a,b) => db.from("legal_entities").select("*").eq("active",true).order("id").range(a,b))).map(r => ({ id: String(r.id), code: String(r.code), business_name: String(r.business_name), country: stringOrNull(r.country), email: stringOrNull(r.email), phone: stringOrNull(r.phone), active: Boolean(r.active) }));
 }
 export async function getEmployees() {
   const db = await authorizedClient("employee.read");

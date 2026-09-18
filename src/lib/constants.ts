@@ -28,7 +28,7 @@ export const DOCUMENT_CATEGORIES = [
 ];
 
 export const LEGAL_ENTITIES = [
-  { code: "SIMI-IT", business_name: "SIMI Italia" },
+  { code: "SIMI-IT", business_name: "SIMI S.r.l." },
   { code: "SIMI-FR", business_name: "SIMI Francia" },
   { code: "SIMI-LU", business_name: "SIMI Luxembourg" },
 ];

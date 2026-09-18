@@ -22,10 +22,11 @@ docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/ph
 docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/invoice-hotfix.sql
 docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/phase1f2.sql
 docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/phase2a.sql
+docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/phase2a1.sql
 # Upgrade test: actual legacy relationships/data, including an orphan, must survive.
 docker exec "$container" createdb -U postgres phase0_upgrade
 docker exec "$container" psql -U postgres -d phase0_upgrade -q -v ON_ERROR_STOP=1 -f /tmp/tests/bootstrap.sql
 docker exec "$container" sh -c 'for file in /tmp/migrations/00[123]_*.sql; do psql -U postgres -d phase0_upgrade -q -v ON_ERROR_STOP=1 -f "$file" || exit 1; done'
 docker exec "$container" psql -U postgres -d phase0_upgrade -q -v ON_ERROR_STOP=1 -f /tmp/tests/legacy-fixture.sql
- docker exec "$container" sh -c 'for file in /tmp/migrations/00[456789]_*.sql /tmp/migrations/010_*.sql /tmp/migrations/011_*.sql /tmp/migrations/012_*.sql /tmp/migrations/013_*.sql /tmp/migrations/014_*.sql /tmp/migrations/015_*.sql /tmp/migrations/016_*.sql /tmp/migrations/017_*.sql /tmp/migrations/018_*.sql /tmp/migrations/019_*.sql; do psql -U postgres -d phase0_upgrade -q -v ON_ERROR_STOP=1 -f "$file" || exit 1; done'
+ docker exec "$container" sh -c 'for file in /tmp/migrations/00[456789]_*.sql /tmp/migrations/010_*.sql /tmp/migrations/011_*.sql /tmp/migrations/012_*.sql /tmp/migrations/013_*.sql /tmp/migrations/014_*.sql /tmp/migrations/015_*.sql /tmp/migrations/016_*.sql /tmp/migrations/017_*.sql /tmp/migrations/018_*.sql /tmp/migrations/019_*.sql /tmp/migrations/020_*.sql; do psql -U postgres -d phase0_upgrade -q -v ON_ERROR_STOP=1 -f "$file" || exit 1; done'
 docker exec "$container" psql -U postgres -d phase0_upgrade -q -v ON_ERROR_STOP=1 -f /tmp/tests/upgrade-assertions.sql

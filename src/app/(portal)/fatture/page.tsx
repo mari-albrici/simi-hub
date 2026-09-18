@@ -5,6 +5,8 @@ import { getInvoices, getLegalEntities } from "@/lib/data";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { NewInvoiceTrigger } from "./new-invoice-trigger";
 import { getInvoiceFinancialSummaries } from "@/lib/finance";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { statusLabel } from "@/lib/status";
 
 // Il workflow PDF rimane nella pagina dedicata con InvoiceForm.
 // margine esplicito oltre al timeout interno di invoice-pdf-parser.ts (45s).
@@ -56,7 +58,7 @@ export default async function InvoicesPage({
           <span>
             Filtro attivo: {type === "purchase" ? "Fornitori" : type === "sale" ? "Clienti" : "Tutte"}
             {status ? ` · ${STATUS_LABEL[status] ?? status}` : ""}
-            {financialFilter ? ` · stato finanziario ${financialFilter}` : ""}
+            {financialFilter ? ` · stato finanziario ${statusLabel("payment",financialFilter)}` : ""}
           </span>
           <Link href="/fatture" className="btn btn-sm btn-outline-secondary">Rimuovi filtro</Link>
         </div>
@@ -101,7 +103,7 @@ export default async function InvoicesPage({
                 <td>{f?.paid.toFixed(2)} {invoice.currency}</td>
                 <td>{f?.residual.toFixed(2)} {invoice.currency}</td>
                 <td>{invoice.due_date ?? "-"}</td>
-                <td><span className="badge text-bg-warning">{invoice.status}</span></td>
+                <td><StatusBadge domain="invoice" status={invoice.status}/></td>
                 <td className="text-end">
                   <div className="d-flex gap-2 justify-content-end">
                     <Link href={`/fatture/${invoice.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>

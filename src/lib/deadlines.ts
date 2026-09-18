@@ -25,7 +25,7 @@ export async function getDeadlines(params:Record<string,string|undefined>={},all
 export async function deadlineOptions(){
  const db=await authorizedClient("deadline.read");
  const [entities,categories,companies,projects,documents,profiles]=await Promise.all([
- readAll((a,b)=>db.from("legal_entities").select("id,business_name").order("business_name").range(a,b)),
+ readAll((a,b)=>db.from("legal_entities").select("id,business_name").eq("active",true).order("business_name").range(a,b)),
  readAll((a,b)=>db.from("deadline_categories").select("code,name").order("name").range(a,b)),
  readAll((a,b)=>db.from("companies").select("id,business_name").is("archived_at",null).order("business_name").range(a,b)),
  readAll((a,b)=>db.from("projects").select("id,project_code").is("archived_at",null).order("project_code").range(a,b)),

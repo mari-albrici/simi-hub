@@ -21,3 +21,4 @@
 \ir migrations/017_phase1f2_offers_contracts.sql
 \ir migrations/018_phase1g_relation_actions.sql
 \ir migrations/019_phase2a_employees_hr.sql
+\ir migrations/020_phase2a1_status_documents_entities.sql

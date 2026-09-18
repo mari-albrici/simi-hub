@@ -1,5 +1,7 @@
 "use client";
 
+import { statusOptions } from "@/lib/status";
+
 import { useId, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { invoiceLineAmounts } from "@/lib/invoice-calculations";
@@ -378,13 +380,7 @@ export function InvoiceForm({
           <div className="col-md-3">
             <label className="form-label">Stato</label>
             <select name="status" className="form-select" value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="to_register">Registrata</option>
-              <option value="to_check">Da verificare</option>
-              <option value="to_pay">Da pagare</option>
-              <option value="scheduled">Programmata</option>
-              <option value="paid">Pagata</option>
-              <option value="anomaly">Anomalia</option>
-              <option value="archived">Archiviata</option>
+              {statusOptions("invoice",["to_register","to_check","to_pay","scheduled","paid","anomaly","archived"]).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </div>
           <div className="col-md-3">

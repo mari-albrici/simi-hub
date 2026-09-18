@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { LoadingSpinner } from "./loading";
 
 export function SubmitButton({
   children,
@@ -16,10 +17,7 @@ export function SubmitButton({
   return (
     <button type="submit" className={className} disabled={pending}>
       {pending ? (
-        <>
-          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
-          {pendingLabel}
-        </>
+        <LoadingSpinner label={pendingLabel} />
       ) : (
         children
       )}

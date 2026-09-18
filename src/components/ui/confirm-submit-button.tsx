@@ -1,11 +1,12 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { LoadingSpinner } from "./loading";
 
 export function ConfirmSubmitButton({
   children,
   confirmMessage,
-  pendingLabel = "Attendere…",
+  pendingLabel,
   className = "btn btn-sm btn-outline-danger",
 }: {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ export function ConfirmSubmitButton({
   className?: string;
 }) {
   const { pending } = useFormStatus();
+  const inferredLabel = typeof children === "string" ? ({ Archivia: "Archiviazione…", Ripristina: "Ripristino…", "Elimina documento": "Eliminazione…", "Scollega": "Scollegamento…" } as Record<string,string>)[children] ?? "Operazione…" : "Operazione…";
 
   return (
     <button
@@ -27,10 +29,7 @@ export function ConfirmSubmitButton({
       }}
     >
       {pending ? (
-        <>
-          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
-          {pendingLabel}
-        </>
+        <LoadingSpinner label={pendingLabel ?? inferredLabel} />
       ) : (
         children
       )}

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { loginAction } from "@/app/login/actions";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
@@ -40,7 +41,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 <Link href="/reset-password" className="small text-decoration-none">Password dimenticata?</Link>
               </div>
 
-              <button type="submit" className="btn btn-dark w-100">Accedi</button>
+              <SubmitButton className="btn btn-dark w-100" pendingLabel="Accesso…">Accedi</SubmitButton>
             </form>
           </div>
         </div>

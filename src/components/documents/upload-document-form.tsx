@@ -6,7 +6,7 @@ import { DocumentFields,ContextFields,type DocumentOptions } from "./document-fi
 export function UploadDocumentForm({options,values={},scopes,documentId}:{options:DocumentOptions;values?:Record<string,unknown>;scopes:string[];documentId?:string}){
  const [state,action,pending]=useActionState<UploadState,FormData>(uploadDocumentAction,{});
  return <form onSubmit={event=>{event.preventDefault();const form=new FormData(event.currentTarget,(event.nativeEvent as SubmitEvent).submitter);startTransition(()=>action(form));}} className="row g-3">
- {["order","delivery_note","offer","contract"].map(key=>values[key]?<input key={key} type="hidden" name={key} value={String(values[key])}/>:null)}
+ {["order","delivery_note","offer","contract","employee"].map(key=>values[key]?<input key={key} type="hidden" name={key} value={String(values[key])}/>:null)}
  {documentId?<input type="hidden" name="document_id" value={documentId}/>:<><DocumentFields options={options} values={values} scopes={scopes}/><ContextFields options={options} values={values}/></>}
  <div className="col-12"><label className="form-label" htmlFor="file">File originale — PDF, JPEG, PNG, WebP · massimo 10 MB</label><input id="file" name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="form-control" required/></div>
  <div className="col-md-6"><label className="form-label" htmlFor="version_label">Etichetta versione (es. firmata)</label><input id="version_label" name="version_label" className="form-control" maxLength={200}/></div>

@@ -1,53 +1,10 @@
-import { requirePagePermission } from "@/lib/permissions";
-import { getEmployees } from "@/lib/data";
-
-export default async function PersonnelPage() {
-  await requirePagePermission("employee.read");
-  const employees = await getEmployees();
-
-  return (
-    <>
-     <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
-        <div>
-          <h1 className="h3 mb-1">Personale</h1>
-          <p className="text-muted mb-0">Anagrafica dipendenti e referenti aziendali.</p>
-        </div>
-        <button className="btn btn-dark" disabled>Nuovo dipendente — non disponibile</button>
-      </div>
-
-      <div className="app-card p-3">
-        {employees.length === 0 ? (
-          <div className="empty-state">
-            <div className="h5">Nessun dipendente registrato</div>
-            <p className="mb-0">Aggiungi l’anagrafica del personale per iniziare.</p>
-          </div>
-        ) : (
-          <table className="table align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Dipendente</th>
-                <th>Codice</th>
-                <th>Ruolo</th>
-                <th>Email</th>
-                <th>Società</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((employee) => (
-                <tr key={employee.id}>
-                  <td>{employee.full_name}</td>
-                  <td>{employee.employee_code ?? "-"}</td>
-                  <td>{employee.role_title ?? "-"}</td>
-                  <td>{employee.email ?? "-"}</td>
-                  <td>{employee.legal_entity_name ?? "-"}</td>
-                  <td><span className={`badge text-bg-${employee.status === "active" ? "success" : "secondary"}`}>{employee.status === "active" ? "Attivo" : employee.status}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </>
-  );
+/* eslint-disable */
+import Link from "next/link";
+import { requirePagePermission, authorizedClient } from "@/lib/permissions";
+import { hasPermission } from "@/lib/auth";
+import { PageHeader } from "@/components/ui/page-header";
+export default async function EmployeesPage({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
+ const user=await requirePagePermission("employee.read"),p=await searchParams,db=await authorizedClient("employee.read");let q=db.from("employees").select("*,entity:legal_entities(business_name,country)",{count:"exact"}).order("last_name").order("first_name");
+ if(p.q)q=q.or(`first_name.ilike.%${p.q}%,last_name.ilike.%${p.q}%,employee_code.ilike.%${p.q}%,role_title.ilike.%${p.q}%`);if(p.status)q=q.eq("status",p.status);if(p.entity)q=q.eq("legal_entity_id",p.entity);if(p.country)q=q.eq("country",p.country);if(p.archived!=="1")q=q.is("archived_at",null);const page=Math.max(1,Number(p.page||1));const result=await q.range((page-1)*50,page*50-1);if(result.error)throw new Error(result.error.message);const entities=await db.from("legal_entities").select("id,business_name").eq("active",true).order("business_name");
+ return <><PageHeader title="Personale" description="Fascicoli amministrativi dei dipendenti." actionLabel={hasPermission(user.role,"employee.create")?"Nuovo dipendente":undefined} actionHref={hasPermission(user.role,"employee.create")?"/personale/new":undefined}/><form className="row g-2 mb-3"><div className="col-md-4"><input className="form-control" name="q" placeholder="Cerca nome, matricola, mansione" defaultValue={p.q}/></div><div className="col-md-3"><select className="form-select" name="entity" defaultValue={p.entity||""}><option value="">Tutte le società</option>{(entities.data||[]).map(e=><option key={e.id} value={e.id}>{e.business_name}</option>)}</select></div><div className="col-md-2"><select className="form-select" name="status" defaultValue={p.status||""}><option value="">Tutti gli stati</option><option value="to_hire">Da assumere</option><option value="active">Attivo</option><option value="suspended">Sospeso</option><option value="terminated">Cessato</option><option value="archived">Archiviato</option></select></div><div className="col-md-2"><button className="btn btn-outline-primary">Filtra</button> <Link className="btn btn-link" href="/personale">Reset</Link></div></form><div className="app-card p-3"><div className="table-responsive"><table className="table table-sm align-middle"><thead><tr><th>Cognome / nome</th><th>Matricola</th><th>Società</th><th>Paese</th><th>Mansione</th><th>Assunzione</th><th>Stato</th></tr></thead><tbody>{(result.data||[]).map((e:any)=><tr key={e.id}><td><Link href={`/personale/${e.id}`}>{e.last_name} {e.first_name}</Link></td><td>{e.employee_code||"—"}</td><td>{e.entity?.business_name||"—"}</td><td>{e.country||e.entity?.country||"—"}</td><td>{e.role_title||"—"}</td><td>{e.hire_date||"—"}</td><td><span className={`badge text-bg-${e.status==="active"?"success":e.status==="terminated"?"secondary":"warning"}`}>{({to_hire:"Da assumere",active:"Attivo",suspended:"Sospeso",terminated:"Cessato",archived:"Archiviato"} as any)[e.status]||e.status}</span></td></tr>)}</tbody></table></div>{!result.data?.length&&<div className="empty-state">Nessun dipendente corrisponde ai filtri.</div>}</div></>;
 }

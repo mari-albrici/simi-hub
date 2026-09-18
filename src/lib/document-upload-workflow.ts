@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateDocumentFile,documentHash,normalizedDocumentName } from "./files";
 import { AppError,checkDatabase } from "./errors";
 /** Single reserve -> upload -> finalize workflow, shared by documents and invoice PDFs. */
-export async function uploadDocumentFile(db:SupabaseClient,file:File,metadata:Record<string,unknown>,options:{documentId?:string;label?:string;notes?:string;acknowledgeDuplicate?:boolean;typeName?:string;project?:string|null;company?:string|null;invoice?:string|null;order?:string|null;delivery_note?:string|null;offer?:string|null;contract?:string|null}={}){
+export async function uploadDocumentFile(db:SupabaseClient,file:File,metadata:Record<string,unknown>,options:{documentId?:string;label?:string;notes?:string;acknowledgeDuplicate?:boolean;typeName?:string;project?:string|null;company?:string|null;invoice?:string|null;order?:string|null;delivery_note?:string|null;employee?:string|null;offer?:string|null;contract?:string|null}={}){
  await validateDocumentFile(file);
  const hash=await documentHash(file);
  const normalized=normalizedDocumentName(String(metadata.document_date||new Date().toISOString().slice(0,10)),options.typeName||"Documento",String(metadata.title||file.name),file.name);
@@ -15,6 +15,7 @@ export async function uploadDocumentFile(db:SupabaseClient,file:File,metadata:Re
  if(!options.documentId){for(const kind of ["order","delivery_note"] as const){const recordId=options[kind];if(recordId){const linked=await db.rpc("link_commercial_document",{doc:row.document_id,kind,record_id:recordId});if(linked.error){await db.rpc("fail_document_version",{version:row.version_id});checkDatabase(linked.error,"Collegamento ordine/DDT");}}}}
  if(!options.documentId&&options.offer){const linked=await db.rpc("link_offer_document",{doc:row.document_id,offer:options.offer});if(linked.error)checkDatabase(linked.error,"Collegamento offerta");}
  if(!options.documentId&&options.contract){const linked=await db.rpc("link_contract_document",{doc:row.document_id,contract:options.contract});if(linked.error)checkDatabase(linked.error,"Collegamento contratto");}
+ if(!options.documentId&&options.employee){const linked=await db.rpc("link_employee_document",{doc:row.document_id,employee:options.employee});if(linked.error)checkDatabase(linked.error,"Collegamento dipendente");}
  const uploaded=await db.storage.from("simi-documents").upload(row.storage_path,file,{upsert:false,contentType:file.type});
  if(uploaded.error){const cleanup=await db.rpc("fail_document_version",{version:row.version_id});checkDatabase(cleanup.error,"Registrazione errore Storage");throw new AppError("storage",`Upload non riuscito. La prenotazione è tracciata nel documento ${row.document_id}.`);}
  const finalized=await db.rpc("finalize_document_version",{version:row.version_id,acknowledge_duplicate:!!options.acknowledgeDuplicate});

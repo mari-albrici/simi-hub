@@ -52,8 +52,8 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
       <div className="flex-grow-1 d-flex flex-column">
         <header className="topbar px-4 py-3 d-flex align-items-center justify-content-between gap-3">
           <div className="d-flex align-items-center gap-3">
-            <button className="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar">
-              ☰
+            <button className="btn btn-outline-secondary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-label="Apri menu">
+              <i className="bi bi-list" aria-hidden="true" />
             </button>
           </div>
 

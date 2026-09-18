@@ -8,7 +8,7 @@ export const documentFormSchema=z.object({
  access_scope:z.enum(["general","restricted","hr"]).default("general"),status:z.enum(["draft","valid","superseded"]).default("valid"),
  expected_updated_at:z.iso.datetime({offset:true}).optional(),
 });
-export const documentContextSchema=z.object({project:optionalId,company:optionalId,invoice:optionalId});
+export const documentContextSchema=z.object({project:optionalId,company:optionalId,invoice:optionalId,employee:optionalId});
 export const documentFilterSchema=z.object({
  q:z.string().max(200).default(""),category:optionalId,entity:optionalId,project:optionalId,company:optionalId,invoice:optionalId,
  country:z.string().max(80).default(""),status:z.enum(["","draft","valid","expiring","expired","superseded","archived"]).default(""),

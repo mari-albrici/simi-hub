@@ -7,6 +7,7 @@ export function hasPermission(role: string, permission: string) {
   // Admin is the platform role. New capabilities automatically belong to it;
   // authorization is still enforced by the server actions and database RLS.
   if (role === "admin") return true;
+  if (role === "hr" && ["employee.create","employee.archive","employee.hr.read"].includes(permission)) return true;
   return (PERMISSION_MATRIX[role] ?? []).includes(permission);
 }
 export function getRoleLabel(role: string) {

@@ -1,60 +1,40 @@
-import { hasPermission, isAllowedCorporateEmail } from "@/lib/auth";
-import { DEFAULT_ROLES } from "@/lib/constants";
+import { redirect } from "next/navigation";
+import { hasPermission } from "@/lib/auth";
 import { getSessionUser } from "@/lib/session";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { AppError } from "@/lib/errors";
+import type { PermissionName } from "@/types";
 
-export type AccessScope = {
-  canRead: boolean;
-  canCreate: boolean;
-  canUpdate: boolean;
-  canDelete: boolean;
-  canUpload: boolean;
-  isAdmin: boolean;
-  role: string;
-};
-
-export async function getAccessScope(): Promise<AccessScope> {
-  const sessionUser = await getSessionUser();
-  const role = sessionUser?.role ?? "viewer";
-
-  const canRead = hasPermission(role, "project.read") || hasPermission(role, "document.read") || hasPermission(role, "company.read");
-  const canCreate = hasPermission(role, "project.create") || hasPermission(role, "document.upload") || hasPermission(role, "invoice.create");
-  const canUpdate = hasPermission(role, "project.update") || hasPermission(role, "document.update") || hasPermission(role, "company.update");
-  const canDelete = hasPermission(role, "project.delete") || hasPermission(role, "document.delete") || hasPermission(role, "invoice.delete");
-  const canUpload = hasPermission(role, "document.upload");
-  const isAdmin = role === "admin" || DEFAULT_ROLES.includes(role as (typeof DEFAULT_ROLES)[number]);
-
-  return {
-    canRead,
-    canCreate,
-    canUpdate,
-    canDelete,
-    canUpload,
-    isAdmin,
-    role,
-  };
+export async function requirePermission(permission: PermissionName) {
+  const user = await getSessionUser();
+  if (!user) throw new AppError("authentication", "Sessione assente o utente non attivo. Accedi nuovamente.");
+  if (!hasPermission(user.role, permission)) throw new AppError("forbidden", "Accesso negato per questa operazione.");
+  return user;
 }
-
-export async function canAccessPage(page: string): Promise<boolean> {
-  const sessionUser = await getSessionUser();
-  if (!sessionUser || !isAllowedCorporateEmail(sessionUser.email)) {
-    return false;
-  }
-
-  const role = sessionUser.role ?? "viewer";
-  const permissionMap: Record<string, string> = {
-    "/dashboard": "project.read",
-    "/commesse": "project.read",
-    "/documenti": "document.read",
-    "/fatture": "invoice.read",
-    "/clienti": "company.read",
-    "/fornitori": "company.read",
-    "/scadenze": "project.read",
-    "/personale": "employee.read",
-    "/impostazioni": "admin.settings",
-    "/aziende": "company.read",
-    "/report": "project.read",
-  };
-
-  const required = permissionMap[page] ?? "project.read";
-  return hasPermission(role, required as any) || role === "admin";
+export async function authorizedClient(permission: PermissionName) {
+  await requirePermission(permission);
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) throw new AppError("configuration", "Connessione Supabase non configurata.");
+  return supabase;
+}
+export async function requirePagePermission(permission: PermissionName) {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (!hasPermission(user.role, permission)) redirect("/accesso-negato");
+  return user;
+}
+export const PAGE_PERMISSIONS: Record<string, PermissionName> = {
+  "/dashboard": "dashboard.read", "/commesse": "project.read", "/documenti": "document.read", "/fatture": "invoice.read",
+  "/clienti": "company.read", "/fornitori": "company.read", "/scadenze": "deadline.read", "/personale": "employee.read",
+  "/impostazioni": "admin.settings", "/aziende": "legal_entity.read", "/report": "report.read", "/pagamenti": "invoice.read",
+};
+export async function canAccessPage(page: string) {
+  const user = await getSessionUser();
+  return Boolean(user && PAGE_PERMISSIONS[page] && hasPermission(user.role, PAGE_PERMISSIONS[page]));
+}
+export async function getAccessScope(domain: "project" | "document" | "invoice" | "company" = "project") {
+  const user = await getSessionUser();
+  const check = (permission: PermissionName) => Boolean(user && hasPermission(user.role, permission));
+  return { canRead: check(`${domain}.read`), canCreate: domain === "document" ? check("document.upload") : check(`${domain}.create`),
+    canUpdate: check(`${domain}.update`), canDelete: check(`${domain}.delete`), canUpload: check("document.upload"), isAdmin: user?.role === "admin", role: user?.role ?? null };
 }

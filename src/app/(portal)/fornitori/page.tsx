@@ -1,9 +1,12 @@
+import { getAccessScope, requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { deleteCompanyAction } from "@/lib/crud";
 import { getCompaniesByType } from "@/lib/data";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 
 export default async function SuppliersPage() {
+  await requirePagePermission("company.read");
+  const access = await getAccessScope("company");
   const suppliers = await getCompaniesByType("supplier");
 
   return (
@@ -13,7 +16,7 @@ export default async function SuppliersPage() {
           <h1 className="h3 mb-1">Fornitori</h1>
           <p className="text-muted mb-0">Gestione principali fornitori e contatti.</p>
         </div>
-        <Link href="/fornitori/new" className="btn btn-dark">+ Nuovo fornitore</Link>
+        {access.canCreate && <Link href="/fornitori/new" className="btn btn-dark">+ Nuovo fornitore</Link>}
       </div>
 
       <div className="app-card p-3">
@@ -31,6 +34,7 @@ export default async function SuppliersPage() {
               </tr>
             </thead>
             <tbody>
+              {suppliers.length === 0 && <tr><td colSpan={9} className="text-muted py-4">Nessun record presente.</td></tr>}
               {suppliers.map((supplier) => (
                 <tr key={supplier.id}>
                   <td>
@@ -50,15 +54,15 @@ export default async function SuppliersPage() {
                   <td className="text-end">
                     <div className="d-flex gap-2 justify-content-end">
                       <Link href={`/fornitori/${supplier.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>
-                      <Link href={`/fornitori/${supplier.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>
-                      <form action={async () => {
+                      {access.canUpdate && <Link href={`/fornitori/${supplier.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>}
+                      {access.canDelete && <form action={async () => {
                         "use server";
                         await deleteCompanyAction(supplier.id, "supplier");
                       }}>
-                        <ConfirmSubmitButton confirmMessage={`Eliminare il fornitore "${supplier.business_name}"?`} pendingLabel="Eliminazione…">
-                          Elimina
+                        <ConfirmSubmitButton confirmMessage={`Archiviare il fornitore "${supplier.business_name}"?`} pendingLabel="Archiviazione…">
+                          Archivia
                         </ConfirmSubmitButton>
-                      </form>
+                      </form>}
                     </div>
                   </td>
                 </tr>

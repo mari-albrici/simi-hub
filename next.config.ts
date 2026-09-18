@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@napi-rs/canvas", "tesseract.js", "unpdf"],
   experimental: {
     serverActions: {
+      bodySizeLimit: "11mb",
       allowedOrigins: devOrigins,
     },
   },

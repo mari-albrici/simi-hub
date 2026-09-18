@@ -1,4 +1,7 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getDeadlines, deadlineHref } from "@/lib/deadlines";
+import { checkDatabase } from "@/lib/errors";
+import { authorizedClient } from "@/lib/permissions";
+import { getInvoices, readAll } from "@/lib/data";
 import {
   addDaysISO,
   getTimeStatus,
@@ -16,10 +19,10 @@ import type {
 } from "@/types";
 
 export type DashboardKpis = {
-  payable: { amount: number; count: number };
-  receivable: { amount: number; count: number };
-  payableOverdue: { amount: number; count: number };
-  receivableOverdue: { amount: number; count: number };
+  payable: { amount: number; count: number; currencies?: Record<string, number> };
+  receivable: { amount: number; count: number; currencies?: Record<string, number> };
+  payableOverdue: { amount: number; count: number; currencies?: Record<string, number> };
+  receivableOverdue: { amount: number; count: number; currencies?: Record<string, number> };
   deadlinesNext7: number;
   anomalies: number;
 };
@@ -38,32 +41,6 @@ export type DashboardData = {
   projectsAttention: ProjectAttention[];
 };
 
-function emptyBucket(): FinancialBucket {
-  return { totalOpen: 0, countOpen: 0, dueSoon7: 0, dueSoon30: 0, overdue: 0, countOverdue: 0 };
-}
-
-function emptyDashboardData(overrides: Partial<DashboardData> = {}): DashboardData {
-  return {
-    configured: false,
-    error: false,
-    kpis: {
-      payable: { amount: 0, count: 0 },
-      receivable: { amount: 0, count: 0 },
-      payableOverdue: { amount: 0, count: 0 },
-      receivableOverdue: { amount: 0, count: 0 },
-      deadlinesNext7: 0,
-      anomalies: 0,
-    },
-    attentionItems: [],
-    upcomingDeadlines: [],
-    supplierSummary: emptyBucket(),
-    customerSummary: emptyBucket(),
-    cashFlow: [],
-    projectsAttention: [],
-    ...overrides,
-  };
-}
-
 type InvoiceRow = {
   id: string;
   invoice_number: string;
@@ -71,7 +48,7 @@ type InvoiceRow = {
   status: string;
   amount_total: number;
   due_date: string | null;
-  project_id: string | null;
+  project_ids: string[];
   supplier_id: string | null;
   customer_id: string | null;
   document_id: string | null;
@@ -116,42 +93,18 @@ function bucketize(rows: InvoiceRow[], today: string, in7: string, in30: string)
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return emptyDashboardData();
-
-  try {
+  const supabase = await authorizedClient("dashboard.read");
     const today = todayISO();
-    const in7 = addDaysISO(7, today);
-    const in30 = addDaysISO(30, today);
-    const in60 = addDaysISO(60, today);
-    const in90 = addDaysISO(90, today);
-    const in31 = addDaysISO(31, today);
-    const in61 = addDaysISO(61, today);
-
-    const [
-      { data: invoiceData, error: invoiceError },
-      { data: deadlineData, error: deadlineError },
-      { data: documentData, error: documentError },
-      { data: categoryData },
-      { data: projectData },
-      { data: companyData },
-    ] = await Promise.all([
-      supabase
-        .from("invoices")
-        .select("id, invoice_number, invoice_type, status, amount_total, due_date, project_id, supplier_id, customer_id, document_id"),
-      supabase
-        .from("deadlines")
-        .select("id, title, description, due_date, status, priority, project_id, company_id, invoice_id")
-        .eq("status", "open"),
-      supabase.from("documents").select("id, title, category_id, expiry_date, status, project_id"),
-      supabase.from("document_categories").select("id, code"),
-      supabase.from("projects").select("id, project_code, name, customer_id"),
-      supabase.from("companies").select("id, business_name"),
+    const in7 = addDaysISO(7, today); const in30 = addDaysISO(30, today);
+    const in60 = addDaysISO(60, today); const in90 = addDaysISO(90, today);
+    const in31 = addDaysISO(31, today); const in61 = addDaysISO(61, today);
+    const [invoiceData, deadlineData, documentData, projectData, companyData] = await Promise.all([
+      getInvoices(),
+      readAll((a,b) => supabase.from("deadlines").select("id,title,description,due_date,status,priority,project_id,company_id,invoice_id").eq("status","open").is("archived_at",null).is("invoice_id",null).order("id").range(a,b)),
+      readAll((a,b) => supabase.from("documents").select("id,title,category_id,expiry_date,status,project_id").is("archived_at",null).eq("file_state","ready").order("id").range(a,b)),
+      readAll((a,b) => supabase.from("projects").select("id,project_code,name,customer_id").is("archived_at",null).order("id").range(a,b)),
+      readAll((a,b) => supabase.from("companies").select("id,business_name").is("archived_at",null).order("id").range(a,b)),
     ]);
-
-    if (invoiceError || deadlineError || documentError) {
-      return emptyDashboardData({ configured: true, error: true });
-    }
 
     const companyMap = new Map((companyData ?? []).map((c) => [String(c.id), String(c.business_name ?? "-")]));
     const projectMap = new Map(
@@ -164,7 +117,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         },
       ]),
     );
-    const ddtCategoryIds = new Set((categoryData ?? []).filter((c) => c.code === "06").map((c) => String(c.id)));
+
 
     const invoices: InvoiceRow[] = (invoiceData ?? []).map((row) => ({
       id: String(row.id),
@@ -173,7 +126,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       status: String(row.status ?? "to_register"),
       amount_total: Number(row.amount_total ?? 0),
       due_date: row.due_date ? String(row.due_date) : null,
-      project_id: row.project_id ? String(row.project_id) : null,
+      project_ids: row.project_ids,
       supplier_id: row.supplier_id ? String(row.supplier_id) : null,
       customer_id: row.customer_id ? String(row.customer_id) : null,
       document_id: row.document_id ? String(row.document_id) : null,
@@ -209,17 +162,16 @@ export async function getDashboardData(): Promise<DashboardData> {
     const toVerifyInvoices = openInvoices.filter(
       (row) => (row.status === "anomaly" || row.status === "to_check") && !(row.due_date && row.due_date < today),
     );
-    const missingProjectInvoices = openInvoices.filter((row) => !row.project_id);
+    const missingProjectInvoices = openInvoices.filter((row) => row.project_ids.length === 0);
 
-    const invoiceDocumentIds = new Set(invoices.map((row) => row.document_id).filter((id): id is string => Boolean(id)));
-    const ddtWithoutInvoice = documents.filter(
-      (doc) => doc.category_id && ddtCategoryIds.has(doc.category_id) && !invoiceDocumentIds.has(doc.id),
-    );
+    // DDT inference removed: category 06 is not a DDT/invoice relation.
+    const ddtWithoutInvoice: DocumentRow[] = [];
     const expiringDocuments = documents.filter(
       (doc) => doc.expiry_date && doc.expiry_date <= in30 && doc.status !== "archived",
     );
 
-    const deadlinesNext7 = deadlines.filter((d) => d.due_date && d.due_date >= today && d.due_date <= in7).length;
+    const next7 = await getDeadlines({period:"7"});
+    const deadlinesNext7 = next7.count;
     const anomalies = toVerifyInvoices.length + missingProjectInvoices.length + ddtWithoutInvoice.length;
 
     // --- Attività che richiedono attenzione ---
@@ -231,8 +183,8 @@ export async function getDashboardData(): Promise<DashboardData> {
         type: "invoice_purchase_overdue",
         priority: "critical",
         title: `Pagamento fattura ${inv.invoice_number}`,
-        projectId: inv.project_id ?? undefined,
-        projectCode: inv.project_id ? projectMap.get(inv.project_id)?.project_code : undefined,
+        projectId: inv.project_ids[0],
+        projectCode: inv.project_ids.map(id => projectMap.get(id)?.project_code).filter(Boolean).join(", ") || undefined,
         subjectName: inv.supplier_id ? companyMap.get(inv.supplier_id) : undefined,
         dueDate: inv.due_date ?? undefined,
         amount: inv.amount_total,
@@ -247,8 +199,8 @@ export async function getDashboardData(): Promise<DashboardData> {
         type: "invoice_sale_overdue",
         priority: "critical",
         title: `Incasso fattura ${inv.invoice_number}`,
-        projectId: inv.project_id ?? undefined,
-        projectCode: inv.project_id ? projectMap.get(inv.project_id)?.project_code : undefined,
+        projectId: inv.project_ids[0],
+        projectCode: inv.project_ids.map(id => projectMap.get(id)?.project_code).filter(Boolean).join(", ") || undefined,
         subjectName: inv.customer_id ? companyMap.get(inv.customer_id) : undefined,
         dueDate: inv.due_date ?? undefined,
         amount: inv.amount_total,
@@ -282,8 +234,8 @@ export async function getDashboardData(): Promise<DashboardData> {
         priority: inv.status === "anomaly" ? "high" : "medium",
         title: `Fattura ${inv.invoice_type === "purchase" ? "fornitore" : "cliente"} da verificare`,
         description: inv.invoice_number,
-        projectId: inv.project_id ?? undefined,
-        projectCode: inv.project_id ? projectMap.get(inv.project_id)?.project_code : undefined,
+        projectId: inv.project_ids[0],
+        projectCode: inv.project_ids.map(id => projectMap.get(id)?.project_code).filter(Boolean).join(", ") || undefined,
         subjectName:
           (inv.supplier_id && companyMap.get(inv.supplier_id)) || (inv.customer_id && companyMap.get(inv.customer_id)) || undefined,
         dueDate: inv.due_date ?? undefined,
@@ -339,56 +291,21 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     const sortedAttentionItems = sortByPriorityThenDate(attentionItems);
 
-    // --- Prossime scadenze (30 giorni, inclusi scaduti) ---
-    const upcomingDeadlines: DeadlineListItem[] = [];
-
-    for (const inv of openInvoices) {
-      if (!inv.due_date || inv.due_date > in30) continue;
-      upcomingDeadlines.push({
-        id: `inv-${inv.id}`,
-        category: inv.invoice_type === "purchase" ? "Fattura fornitore" : "Fattura cliente",
-        description: inv.invoice_number,
-        dueDate: inv.due_date,
-        amount: inv.amount_total,
-        projectCode: inv.project_id ? projectMap.get(inv.project_id)?.project_code : undefined,
-        subjectName:
-          (inv.supplier_id && companyMap.get(inv.supplier_id)) || (inv.customer_id && companyMap.get(inv.customer_id)) || undefined,
-        status: inv.status,
-        timeStatus: getTimeStatus(inv.due_date, today),
-        href: `/fatture/${inv.id}`,
-      });
-    }
-
-    for (const d of deadlines) {
-      if (!d.due_date || d.due_date > in30) continue;
-      upcomingDeadlines.push({
-        id: `dl-${d.id}`,
-        category: "Scadenza",
-        description: d.title,
-        dueDate: d.due_date,
-        projectCode: d.project_id ? projectMap.get(d.project_id)?.project_code : undefined,
-        subjectName: d.company_id ? companyMap.get(d.company_id) : undefined,
-        status: d.status,
-        timeStatus: getTimeStatus(d.due_date, today),
-        href: d.invoice_id ? `/fatture/${d.invoice_id}` : d.project_id ? `/commesse/${d.project_id}` : "/scadenze",
-      });
-    }
-
-    for (const doc of documents) {
-      if (!doc.expiry_date || doc.expiry_date > in30 || doc.status === "archived") continue;
-      upcomingDeadlines.push({
-        id: `doc-${doc.id}`,
-        category: "Documento",
-        description: doc.title,
-        dueDate: doc.expiry_date,
-        projectCode: doc.project_id ? projectMap.get(doc.project_id)?.project_code : undefined,
-        status: doc.status,
-        timeStatus: getTimeStatus(doc.expiry_date, today),
-        href: `/documenti/${doc.id}`,
-      });
-    }
-
-    upcomingDeadlines.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    // Same source and server filters as the operational register.
+    const upcomingRows=(await getDeadlines({period:"30"},true)).rows;
+    const upcomingDeadlines: DeadlineListItem[] = upcomingRows.map(row=>({
+      id:row.id,category:row.category_name,description:row.title,dueDate:row.due_date!,
+      amount:row.residual===null?undefined:Number(row.residual),currency:row.currency??undefined,
+      subjectName:row.company_name??undefined,status:row.temporal_status,timeStatus:getTimeStatus(row.due_date,today),
+      href:deadlineHref(row as import("@/lib/deadlines").Deadline),
+    }));
+    const kpiResult=await supabase.rpc("deadline_financial_kpis");checkDatabase(kpiResult.error);
+    const financialKpi=(kind:string,overdueOnly=false)=>{
+      const rows=(kpiResult.data??[]) as {kind:string;currency:string;overdue:boolean;amount:number;items:number}[];
+      const currencies:Record<string,number>={};let count=0;
+      for(const row of rows.filter(r=>r.kind===kind&&(!overdueOnly||r.overdue))){currencies[row.currency]=(currencies[row.currency]??0)+Number(row.amount);count+=Number(row.items);}
+      return {amount:currencies.EUR??0,count,currencies};
+    };
 
     // --- Flusso di cassa previsto (90 giorni) ---
     const bucketRange = (fromInclusive: string, toInclusive: string) => {
@@ -411,9 +328,9 @@ export async function getDashboardData(): Promise<DashboardData> {
       projectReasons.get(projectId)!.add(reason);
     };
 
-    purchaseOverdue.forEach((inv) => addReason(inv.project_id, "Fatture fornitore scadute"));
-    saleOverdue.forEach((inv) => addReason(inv.project_id, "Incassi scaduti"));
-    toVerifyInvoices.forEach((inv) => addReason(inv.project_id, "Fatture da verificare"));
+    purchaseOverdue.forEach((inv) => inv.project_ids.forEach(id => addReason(id, "Fatture fornitore scadute")));
+    saleOverdue.forEach((inv) => inv.project_ids.forEach(id => addReason(id, "Incassi scaduti")));
+    toVerifyInvoices.forEach((inv) => inv.project_ids.forEach(id => addReason(id, "Fatture da verificare")));
     deadlines.forEach((d) => {
       const ts = getTimeStatus(d.due_date, today);
       if (ts === "overdue" || ts === "today") addReason(d.project_id, "Scadenze imminenti");
@@ -438,10 +355,10 @@ export async function getDashboardData(): Promise<DashboardData> {
       configured: true,
       error: false,
       kpis: {
-        payable: { amount: sum(purchaseOpen), count: purchaseOpen.length },
-        receivable: { amount: sum(saleOpen), count: saleOpen.length },
-        payableOverdue: { amount: sum(purchaseOverdue), count: purchaseOverdue.length },
-        receivableOverdue: { amount: sum(saleOverdue), count: saleOverdue.length },
+        payable: financialKpi("payment"),
+        receivable: financialKpi("receipt"),
+        payableOverdue: financialKpi("payment",true),
+        receivableOverdue: financialKpi("receipt",true),
         deadlinesNext7,
         anomalies,
       },
@@ -452,7 +369,4 @@ export async function getDashboardData(): Promise<DashboardData> {
       cashFlow,
       projectsAttention,
     };
-  } catch {
-    return emptyDashboardData({ configured: true, error: true });
-  }
 }

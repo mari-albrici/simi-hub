@@ -1,8 +1,12 @@
+import { getCompaniesByType, getProfileDirectory, getLegalEntities } from "@/lib/data";
+import { requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { createProjectAction } from "@/lib/crud";
 import { SubmitButton } from "@/components/ui/submit-button";
 
-export default function NewProjectPage() {
+export default async function NewProjectPage() {
+  await requirePagePermission("project.create");
+  const [customers, managers, entities] = await Promise.all([getCompaniesByType("customer"), getProfileDirectory(), getLegalEntities()]);
   return (
     <>
       <nav aria-label="breadcrumb" className="breadcrumb">
@@ -19,7 +23,7 @@ export default function NewProjectPage() {
         <form action={createProjectAction} className="row g-3">
           <div className="col-md-4">
             <label className="form-label">Codice commessa</label>
-            <input name="project_code" className="form-control" defaultValue="C-NEW" required />
+            <input name="project_code" className="form-control"  required />
           </div>
           <div className="col-md-8">
             <label className="form-label">Nome</label>
@@ -27,19 +31,20 @@ export default function NewProjectPage() {
           </div>
           <div className="col-md-6">
             <label className="form-label">Cliente</label>
-            <input name="customer_name" className="form-control" placeholder="Nome cliente" />
+            <select name="customer_id" className="form-select"><option value="">Non assegnato</option>{customers.map(item => <option key={item.id} value={item.id}>{item.business_name}</option>)}</select>
           </div>
           <div className="col-md-6">
             <label className="form-label">Responsabile</label>
-            <input name="project_manager_name" className="form-control" placeholder="Nome responsabile" />
+            <select name="project_manager_id" className="form-select"><option value="">Non assegnato</option>{managers.map(item => <option key={item.id} value={item.id}>{[item.first_name,item.last_name].filter(Boolean).join(" ")}</option>)}</select>
           </div>
+          <div className="col-md-12"><label className="form-label">Società SIMI</label><select name="legal_entity_id" className="form-select"><option value="">Da assegnare</option>{entities.map(item => <option key={item.id} value={item.id}>{item.business_name}</option>)}</select></div>
           <div className="col-md-4">
             <label className="form-label">Paese</label>
             <input name="country" className="form-control" defaultValue="Italia" />
           </div>
           <div className="col-md-4">
             <label className="form-label">Città</label>
-            <input name="city" className="form-control" defaultValue="Milano" />
+            <input name="city" className="form-control"  />
           </div>
           <div className="col-md-4">
             <label className="form-label">Stato</label>

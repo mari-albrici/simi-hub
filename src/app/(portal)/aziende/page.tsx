@@ -1,6 +1,17 @@
+import { requirePagePermission } from "@/lib/permissions";
+import { hasPermission } from "@/lib/auth";
 import { getLegalEntities } from "@/lib/data";
+import { NewLegalEntityTrigger } from "./new-legal-entity-trigger";
 
-export default async function LegalEntitiesPage() {
+type AziendeSearchParams = { error?: string };
+
+export default async function LegalEntitiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<AziendeSearchParams>;
+}) {
+  const user = await requirePagePermission("legal_entity.read");
+  const { error } = await searchParams;
   const legalEntities = await getLegalEntities();
 
   return (
@@ -10,8 +21,10 @@ export default async function LegalEntitiesPage() {
           <h1 className="h3 mb-1">Aziende SIMI</h1>
           <p className="text-muted mb-0">Società e sedi del gruppo SIMI.</p>
         </div>
-        <button className="btn btn-dark">+ Nuova azienda</button>
+        {hasPermission(user.role, "legal_entity.create") && <NewLegalEntityTrigger />}
       </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="app-card p-3">
         {legalEntities.length === 0 ? (

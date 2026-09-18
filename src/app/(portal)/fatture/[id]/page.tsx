@@ -1,75 +1,27 @@
+import { SubmitButton } from "@/components/ui/submit-button";
+import { getArchiveDocument } from "@/lib/documents";
+import { ContextDocuments } from "@/components/documents/context-documents";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ActivityTimeline } from "@/components/ui/activity-timeline";
+import { requirePagePermission, getAccessScope } from "@/lib/permissions";
 import { getInvoiceById } from "@/lib/data";
-
-const timelineItems = [
-  {
-    time: "16/09/2026 15:42",
-    user: "Mario Rossi",
-    title: "Fattura 921",
-    description: "Stato modificato: DA REGISTRARE → ANOMALIA",
-  },
-  {
-    time: "15/09/2026 13:00",
-    user: "Laura Verdi",
-    title: "Ricevuta inviata",
-    description: "Documento ricevuto dal fornitore in fase di verifica",
-  },
-];
-
+import { ActivityTimeline } from "@/components/ui/activity-timeline";
+import { getInvoiceFinancialSummaries, getInstallmentBalances } from "@/lib/finance";
+import { saveFinancialMovementAction } from "@/lib/crud";
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const invoice = await getInvoiceById(id);
-
-  if (!invoice) {
-    notFound();
-  }
-
-  return (
-    <>
-      <nav aria-label="breadcrumb" className="breadcrumb">
-        <ol className="breadcrumb">
-          <li className="breadcrumb-item"><Link href="/dashboard">Dashboard</Link></li>
-          <li className="breadcrumb-item"><Link href="/fatture">Fatture</Link></li>
-          <li className="breadcrumb-item active" aria-current="page">{invoice.invoice_number}</li>
-        </ol>
-      </nav>
-
-      <div className="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
-        <div>
-          <div className="text-uppercase small text-muted mb-1">Fattura</div>
-          <h1 className="h3 mb-1">Fattura {invoice.invoice_number}</h1>
-          <div className="d-flex flex-wrap gap-3 text-muted small">
-            <span>Società: {invoice.company_name}</span>
-            <span>Commessa: {invoice.project_code}</span>
-            <span>Totale: € {invoice.amount_total.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </div>
-        </div>
-        <button className="btn btn-dark">Aggiorna</button>
-      </div>
-
-      <div className="row g-4">
-        <div className="col-lg-8">
-          <div className="app-card p-3">
-            <h2 className="h5 mb-3">Dati fattura</h2>
-            <div className="row g-3">
-              <div className="col-md-6"><strong>Numero:</strong> {invoice.invoice_number}</div>
-              <div className="col-md-6"><strong>Data:</strong> {invoice.invoice_date ?? "-"}</div>
-              <div className="col-md-6"><strong>Cliente/Fornitore:</strong> {invoice.customer_name}</div>
-              <div className="col-md-6"><strong>Stato:</strong> <span className="badge text-bg-warning">{invoice.status}</span></div>
-              <div className="col-md-6"><strong>Scadenza:</strong> {invoice.due_date ?? "-"}</div>
-              <div className="col-md-6"><strong>Totale netto:</strong> € {(invoice.amount_total * 0.82).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-              <div className="col-md-6"><strong>IVA:</strong> € {(invoice.amount_total * 0.18).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-              <div className="col-md-6"><strong>Totale:</strong> € {invoice.amount_total.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-lg-4">
-          <ActivityTimeline items={timelineItems} />
-        </div>
-      </div>
-    </>
-  );
+  await requirePagePermission("invoice.read");
+  const invoice = await getInvoiceById((await params).id); if (!invoice) notFound();
+  const pdf=invoice.document_id?await getArchiveDocument(invoice.document_id):null;
+  const installmentBalances=await getInstallmentBalances(invoice.id);
+  const access = await getAccessScope("invoice");
+  const financial = (await getInvoiceFinancialSummaries([invoice.id])).get(invoice.id) ?? { paid: 0, residual: invoice.amount_total, financialStatus: "to_pay" as const };
+  const money = (value: number) => value.toLocaleString("it-IT",{style:"currency",currency:invoice.currency});
+  return <><div className="d-flex justify-content-between mb-4"><h1 className="h3">Fattura {invoice.invoice_number}</h1>{access.canUpdate && <Link className="btn btn-dark" href={`/fatture/${invoice.id}/edit`}>Modifica</Link>}</div>
+    <div className="app-card p-3 mb-3"><dl className="row"><dt className="col-sm-3">Società</dt><dd className="col-sm-9">{invoice.company_name}</dd><dt className="col-sm-3">Controparte</dt><dd className="col-sm-9"><Link href={`/${invoice.invoice_type === "purchase" ? "fornitori" : "clienti"}/${invoice.supplier_id ?? invoice.customer_id}`}>{invoice.customer_name}</Link></dd>
+    <dt className="col-sm-3">Commesse</dt><dd className="col-sm-9">{invoice.linked_projects.length ? invoice.linked_projects.map(p => <Link key={p.id} className="me-3" href={`/commesse/${p.id}`}>{p.project_code}</Link>) : "Nessuna commessa collegata"}</dd>
+    <dt className="col-sm-3">Imponibile</dt><dd className="col-sm-9">{money(invoice.amount_net)}</dd><dt className="col-sm-3">IVA registrata</dt><dd className="col-sm-9">{money(invoice.vat_amount)}{invoice.vat_rate !== null ? ` (${invoice.vat_rate}%)` : ""}</dd><dt className="col-sm-3">Totale</dt><dd className="col-sm-9">{money(invoice.amount_total)}</dd><dt className="col-sm-3">Pagato / incassato</dt><dd className="col-sm-9">{money(financial.paid)}</dd><dt className="col-sm-3">Residuo</dt><dd className="col-sm-9">{money(financial.residual)} <span className="badge text-bg-secondary">{financial.financialStatus}</span></dd><dt className="col-sm-3">Scadenza</dt><dd className="col-sm-9">{invoice.due_date ?? "—"}</dd><dt className="col-sm-3">Note</dt><dd className="col-sm-9">{invoice.notes || "—"}</dd></dl>
+    {pdf&&<div className="d-flex gap-2 flex-wrap"><Link className="btn btn-outline-secondary" href={`/documenti/${pdf.id}`}>Documento originale</Link>{pdf.file_state==="ready"&&!pdf.archived_at&&<><a className="btn btn-outline-secondary" href={`/documenti/versioni/${pdf.current_version_id}/file`} target="_blank" rel="noreferrer">Visualizza PDF</a><a className="btn btn-outline-secondary" href={`/documenti/versioni/${pdf.current_version_id}/file?download=1`}>Scarica PDF</a></>}</div>}</div>
+    {access.canUpdate && financial.residual > 0 && <div className="app-card p-3 mb-3"><h2 className="h5">{invoice.invoice_type === "purchase" ? "Registra pagamento" : "Registra incasso"}</h2><form action={saveFinancialMovementAction} className="row g-2"><input type="hidden" name="direction" value={invoice.invoice_type === "purchase" ? "payment" : "receipt"}/><input type="hidden" name="legal_entity_id" value={invoice.legal_entity_id ?? ""}/><input type="hidden" name="counterparty_id" value={invoice.supplier_id ?? invoice.customer_id ?? ""}/><input type="hidden" name="currency" value={invoice.currency}/><input type="hidden" name="primary_invoice_id" value={invoice.id}/><div className="col-md-3"><label className="form-label">Importo</label><input name="amount" type="number" step="0.01" min="0.01" defaultValue={financial.residual.toFixed(2)} className="form-control" required/></div><div className="col-md-3"><label className="form-label">Data</label><input name="movement_date" type="date" defaultValue={new Date().toISOString().slice(0,10)} className="form-control" required/></div><div className="col-md-3"><label className="form-label">Metodo</label><input name="payment_method" className="form-control"/></div><div className="col-md-3"><label className="form-label">Riferimento</label><input name="reference" className="form-control"/></div><div className="col-12"><SubmitButton className="btn btn-primary" pendingLabel="Registrazione…">{invoice.invoice_type === "purchase" ? "Registra pagamento" : "Registra incasso"}</SubmitButton></div></form></div>}
+    <div className="app-card p-3 mb-3"><h2 className="h5">Righe registrate</h2>{invoice.lines.length ? <div className="table-responsive"><table className="table"><thead><tr><th>Descrizione</th><th>Imponibile</th><th>Aliquota</th><th>IVA</th><th>Totale</th></tr></thead><tbody>{invoice.lines.map(l => <tr key={l.id}><td>{l.description}</td><td>{money(l.amount_net)}</td><td>{l.vat_exempt_reason || (l.vat_rate === null ? "—" : `${l.vat_rate}%`)}</td><td>{money(l.amount_vat)}</td><td>{money(l.amount_total)}</td></tr>)}</tbody></table></div> : <p>Nessuna riga registrata.</p>}</div>
+    <div className="app-card p-3 mb-3"><h2 className="h5">Rate registrate</h2>{invoice.installments.length ? <ul>{invoice.installments.map(i => <li key={i.id} id={`rata-${i.id}`}>{i.due_date} — {money(i.amount)} — Saldato: {money(installmentBalances.get(i.id)?.paid??0)} — Residuo: {money(installmentBalances.get(i.id)?.residual??i.amount)}</li>)}</ul> : <p>Nessuna rata registrata.</p>}</div><ActivityTimeline items={[]} /><ContextDocuments invoice={invoice.id} entity={invoice.legal_entity_id}/></>;
 }

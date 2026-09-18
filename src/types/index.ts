@@ -4,7 +4,8 @@ export type RoleName =
   | "management"
   | "project_manager"
   | "technical"
-  | "viewer";
+  | "viewer"
+  | "hr";
 
 export type PermissionName =
   | "project.read"
@@ -24,7 +25,16 @@ export type PermissionName =
   | "employee.read"
   | "employee.update"
   | "admin.users"
-  | "admin.settings";
+  | "admin.settings"
+  | "company.create"
+  | "company.delete"
+  | "legal_entity.read"
+  | "legal_entity.create"
+  | "deadline.read"
+  | "deadline.write"
+  | "dashboard.read"
+  | "report.read"
+  | "profile.directory";
 
 export type CompanyType = "customer" | "supplier" | "both";
 export type InvoiceType = "purchase" | "sale";
@@ -40,6 +50,36 @@ export type InvoiceStatus =
   | "archived";
 
 export type ProjectStatus = "draft" | "active" | "suspended" | "completed" | "archived";
+
+export type PaymentMethod = "bank_transfer" | "sepa_direct_debit" | "credit_card" | "check" | "cash" | "other";
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  bank_transfer: "Bonifico bancario",
+  sepa_direct_debit: "RID / SEPA Direct Debit",
+  credit_card: "Carta di credito",
+  check: "Assegno",
+  cash: "Contanti",
+  other: "Altro",
+};
+
+export interface InvoiceLineItem {
+  id?: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  vat_rate: number | null;
+  vat_exempt_reason: string | null;
+  amount_net: number;
+  amount_vat: number;
+  amount_total: number;
+}
+
+export interface InvoiceInstallment {
+  id?: string;
+  due_date: string;
+  amount: number;
+  paid: boolean;
+}
 
 export type DeadlineStatus = "open" | "completed" | "cancelled";
 export type DeadlinePriority = "low" | "normal" | "high" | "urgent";
@@ -111,6 +151,7 @@ export interface DeadlineListItem {
   description: string;
   dueDate: string;
   amount?: number;
+  currency?: string;
   projectCode?: string;
   subjectName?: string;
   status: string;

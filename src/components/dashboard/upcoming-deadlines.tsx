@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { DeadlineListItem } from "@/types";
-import { TIME_STATUS_LABEL, formatCurrencyEUR, formatDateIT } from "@/lib/dashboard-helpers";
+import { TIME_STATUS_LABEL, formatDateIT } from "@/lib/dashboard-helpers";
 import { DashboardEmptyState } from "./dashboard-empty-state";
 
 type FilterKey = "today" | "7" | "30";
@@ -26,7 +26,7 @@ export function UpcomingDeadlines({ items }: { items: DeadlineListItem[] }) {
   const filtered = useMemo(() => {
     const activeFilter = FILTERS.find((item) => item.key === filter) ?? FILTERS[2];
     const limit = boundaryDate(activeFilter.days);
-    return items.filter((item) => item.dueDate <= limit);
+    return items.filter((item) => item.dueDate >= boundaryDate(0) && item.dueDate <= limit);
   }, [filter, items]);
 
   return (
@@ -68,7 +68,7 @@ export function UpcomingDeadlines({ items }: { items: DeadlineListItem[] }) {
                 </div>
                 <div className="text-end">
                   <div className="small">{formatDateIT(item.dueDate)}</div>
-                  {item.amount ? <div className="small text-muted">{formatCurrencyEUR(item.amount)}</div> : null}
+                  {item.amount ? <div className="small text-muted">{new Intl.NumberFormat("it-IT",{style:"currency",currency:item.currency||"EUR"}).format(item.amount)}</div> : null}
                   <span
                     className={`badge text-bg-${
                       item.timeStatus === "overdue" ? "danger" : item.timeStatus === "today" ? "warning" : "secondary"

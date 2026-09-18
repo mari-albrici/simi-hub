@@ -1,8 +1,10 @@
+import { requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { createCompanyAction } from "@/lib/crud";
 import { SubmitButton } from "@/components/ui/submit-button";
 
-export default function NewSupplierPage() {
+export default async function NewSupplierPage() {
+  await requirePagePermission("company.create");
   return (
     <>
       <nav aria-label="breadcrumb" className="breadcrumb">
@@ -42,13 +44,14 @@ export default function NewSupplierPage() {
             <label className="form-label">Email</label>
             <input name="email" type="email" className="form-control" />
           </div>
-          <div className="col-md-6">
-            <label className="form-label">Contatto</label>
-            <input name="contact_name" className="form-control" />
-          </div>
+
           <div className="col-12">
             <label className="form-label">Indirizzo</label>
             <input name="address" className="form-control" />
+          </div>
+          <div className="col-12">
+            <label className="form-label">IBAN</label>
+            <input name="iban" className="form-control" />
           </div>
           <div className="col-md-12 d-flex align-items-end justify-content-end gap-2">
             <Link href="/fornitori" className="btn btn-outline-secondary">Annulla</Link>

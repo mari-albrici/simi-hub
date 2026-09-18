@@ -1,38 +1,36 @@
-import { getDeadlinesSummary } from "@/lib/data";
-
-export default async function DeadlinesPage() {
-  const summary = await getDeadlinesSummary();
-
-  return (
-    <>
-    <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
-        <div>
-          <h1 className="h3 mb-1">Scadenze</h1>
-          <p className="text-muted mb-0">Monitoraggio dei passaggi amministrativi e tecnici.</p>
-        </div>
-        <button className="btn btn-dark">+ Nuova scadenza</button>
-      </div>
-
-      <div className="row g-3">
-        <div className="col-md-4">
-          <div className="app-card p-3 h-100">
-            <h2 className="h6">Scadute</h2>
-            <div className="fs-2 fw-bold">{summary.overdue}</div>
-          </div>
-        </div>
-        <div className="col-md-4">
-          <div className="app-card p-3 h-100">
-            <h2 className="h6">Oggi</h2>
-            <div className="fs-2 fw-bold">{summary.dueToday}</div>
-          </div>
-        </div>
-        <div className="col-md-4">
-          <div className="app-card p-3 h-100">
-            <h2 className="h6">Prossimi 30 giorni</h2>
-            <div className="fs-2 fw-bold">{summary.dueNext30Days}</div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
+import Link from "next/link";
+import { requirePagePermission } from "@/lib/permissions";
+import { hasPermission } from "@/lib/auth";
+import { getDeadlines,deadlineOptions,deadlineHref,type Deadline } from "@/lib/deadlines";
+import { temporalLabels,priorityLabels } from "@/lib/deadline-validation";
+const money=(n:number|null,c:string|null)=>n===null?"—":new Intl.NumberFormat("it-IT",{style:"currency",currency:c||"EUR"}).format(n);
+export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
+ const user=await requirePagePermission("deadline.read"),p=await searchParams;
+ const [{rows,count,filters:f,month},o]=await Promise.all([getDeadlines(p),deadlineOptions()]);
+ const href=(values:Record<string,string>)=>`/scadenze?${new URLSearchParams({...Object.fromEntries(Object.entries(p).filter((x):x is [string,string]=>typeof x[1]==="string")),page:"1",...values})}`;
+ const select=(name:string,label:string,options:{id:string;label:string}[])=><div className="col-md-3" key={name}><label className="form-label small" htmlFor={name}>{label}</label><select className="form-select form-select-sm" id={name} name={name} defaultValue={p[name]||""}><option value="">Tutti</option>{options.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></div>;
+ const status=(d:Deadline)=><span className={`badge text-bg-${d.temporal_status==="overdue"?"danger":d.temporal_status==="completed"?"success":"secondary"}`}>{temporalLabels[d.temporal_status]}</span>;
+ const monthLink=(delta:number)=>{const d=new Date(`${month}-01T00:00:00Z`);d.setUTCMonth(d.getUTCMonth()+delta);return href({month:d.toISOString().slice(0,7)});};
+ const monthStart=new Date(`${month}-01T00:00:00Z`),dayCount=new Date(Date.UTC(monthStart.getUTCFullYear(),monthStart.getUTCMonth()+1,0)).getUTCDate();
+ return <><div className="d-flex justify-content-between mb-3"><h1 className="h3">Scadenze</h1>{hasPermission(user.role,"deadline.write")&&<Link className="btn btn-primary" href="/scadenze/new"><i className="bi bi-plus-lg me-2"/>Nuova scadenza</Link>}</div>
+ {p.error&&<p role="alert" className="alert alert-danger">{p.error}</p>}{p.success&&<p className="alert alert-success">{p.success}</p>}
+ <div className="d-flex gap-2 flex-wrap mb-3">{[["today","Oggi"],["7","Prossimi 7 giorni"],["30","Prossimi 30 giorni"],["overdue","Scadute"],["all","Tutte"]].map(([id,label])=><Link key={id} className={`btn btn-sm btn-outline-primary ${f.period===id?"active":""}`} href={href({period:id})}>{label}</Link>)}<Link className="btn btn-sm btn-outline-secondary" href={href({mine:f.mine?"":"1"})}>{f.mine?"Tutti i responsabili":"Le mie scadenze"}</Link></div>
+ <form className="app-card p-3 mb-3"><div className="row g-2">
+ <input type="hidden" name="period" value={f.period}/><input type="hidden" name="mine" value={f.mine}/>
+ {[["q","Ricerca","search"],["from","Dal","date"],["to","Al","date"]].map(([name,label,type])=><div className="col-md-3" key={name}><label className="form-label small" htmlFor={name}>{label}</label><input id={name} name={name} type={type} className="form-control form-control-sm" defaultValue={p[name]}/></div>)}
+ {select("entity","Società SIMI",o.entities.map(x=>({id:x.id,label:x.business_name})))}
+ {select("kind","Tipo",[{id:"payment",label:"Pagamento"},{id:"receipt",label:"Incasso"},{id:"manual",label:"Manuale"},{id:"document",label:"Documento"}])}
+ {select("category","Categoria",o.categories.map(x=>({id:x.code,label:x.name})))}
+ {select("status","Stato",[{id:"open",label:"Da completare"},...Object.entries(temporalLabels).map(([id,label])=>({id,label}))])}
+ {select("priority","Priorità",Object.entries(priorityLabels).map(([id,label])=>({id,label})))}
+ {select("company","Controparte",o.companies.map(x=>({id:x.id,label:x.business_name})))}
+ {select("project","Commessa",o.projects.map(x=>({id:x.id,label:x.project_code})))}
+ {select("assigned","Responsabile",o.profiles.map(x=>({id:x.id,label:[x.first_name,x.last_name].filter(Boolean).join(" ")||x.id})))}
+ <div className="col-md-3"><label className="form-label small" htmlFor="view">Vista</label><select id="view" name="view" className="form-select form-select-sm" defaultValue={f.view}><option value="list">Elenco</option><option value="calendar">Calendario</option></select></div>
+ <div className="col-md-3"><label className="form-label small" htmlFor="month">Mese calendario</label><input id="month" name="month" type="month" defaultValue={month} className="form-control form-control-sm"/></div>
+ <div className="col-md-3"><label className="form-check mt-4"><input className="form-check-input" type="checkbox" name="archived" value="1" defaultChecked={!!f.archived}/>Archiviate</label></div>
+ </div><button className="btn btn-dark btn-sm mt-3">Applica filtri</button> <Link href="/scadenze" className="btn btn-outline-secondary btn-sm mt-3">Azzera</Link></form>
+ <p className="text-muted small">{count} scadenze. I saldi finanziari derivano dalle allocazioni dei movimenti; la priorità è distinta dallo stato temporale.</p>
+ {f.view==="calendar"?<div className="table-responsive"><nav className="d-flex gap-3 mb-2"><Link href={monthLink(-1)}>Mese precedente</Link><strong>{month}</strong><Link href={monthLink(1)}>Mese successivo</Link></nav><div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(130px,1fr))",minWidth:910}}>{["Lun","Mar","Mer","Gio","Ven","Sab","Dom"].map(x=><div key={x} className="bg-light border p-2 fw-bold">{x}</div>)}{Array.from({length:(monthStart.getUTCDay()+6)%7},(_,i)=><div key={`empty${i}`} className="border"/>)}{Array.from({length:dayCount},(_,i)=>{const date=`${month}-${String(i+1).padStart(2,"0")}`;return <div key={date} className="border p-2" style={{minHeight:130}}><Link href={href({view:"list",period:"all",from:date,to:date})}>{i+1}</Link>{rows.filter(d=>d.due_date===date).map(d=><div key={d.id} className="small mt-2"><Link href={deadlineHref(d)}>{d.title}</Link> {status(d)}</div>)}</div>;})}</div></div>:<><div className="table-responsive"><table className="table table-sm table-hover align-middle"><thead><tr>{["Scadenza","Tipo / fonte","Società","Controparte","Commesse","Importo","Saldato","Residuo","Stato","Priorità","Responsabile"].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{rows.map(d=><tr key={d.id}><td>{d.due_date||"Senza data"} {d.due_time?.slice(0,5)}</td><td><Link href={deadlineHref(d)}>{d.title}</Link><div className="small text-muted">{d.kind==="payment"?"Pagamento":d.kind==="receipt"?"Incasso":d.kind==="document"?"Documento":"Manuale"} · {d.category_name}</div>{d.document_id&&<Link className="small" href={`/documenti/${d.document_id}`}>Documento</Link>}</td><td><span className="badge text-bg-light">{d.entity_country}</span> {d.entity_name||"Da assegnare"}</td><td>{d.company_id?<Link href={`/${d.company_type==="supplier"||d.kind==="payment"?"fornitori":"clienti"}/${d.company_id}`}>{d.company_name}</Link>:"—"}</td><td>{d.project_ids.map(id=><div key={id}><Link href={`/commesse/${id}`}>{o.projects.find(x=>x.id===id)?.project_code||id}</Link></div>)}</td><td>{money(d.original_amount,d.currency)}</td><td>{money(d.settled_amount,d.currency)}</td><td>{money(d.residual,d.currency)}</td><td>{status(d)}</td><td><span className={`badge text-bg-${d.priority==="critical"?"danger":d.priority==="high"?"warning":"light"}`}>{priorityLabels[d.priority]}</span></td><td>{o.profiles.filter(x=>x.id===d.assigned_to).map(x=>`${x.first_name||""} ${x.last_name||""}`).join("")||"—"}</td></tr>)}{!rows.length&&<tr><td colSpan={11} className="text-muted py-4">Nessuna scadenza per i filtri selezionati.</td></tr>}</tbody></table></div><nav className="d-flex gap-3">{f.page>1&&<Link href={href({page:String(f.page-1)})}>Precedente</Link>}<span>Pagina {f.page}</span>{f.page*50<count&&<Link href={href({page:String(f.page+1)})}>Successiva</Link>}</nav></>}
+ </>;
 }

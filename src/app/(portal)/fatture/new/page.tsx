@@ -1,7 +1,20 @@
+import { requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
-import { NewInvoiceForm } from "./new-invoice-form";
+import { getAllCompanies, getLegalEntities, getProjects } from "@/lib/data";
+import { InvoiceForm } from "../invoice-form";
 
-export default function NewInvoicePage() {
+// L'estrazione PDF può ricorrere a OCR (più lenta di una semplice lettura testo);
+// margine esplicito oltre al timeout interno di invoice-pdf-parser.ts (45s).
+export const maxDuration = 60;
+
+export default async function NewInvoicePage() {
+  await requirePagePermission("invoice.create");
+  const [companies, legalEntities, projects] = await Promise.all([
+    getAllCompanies(),
+    getLegalEntities(),
+    getProjects(),
+  ]);
+
   return (
     <>
       <nav aria-label="breadcrumb" className="breadcrumb">
@@ -12,7 +25,7 @@ export default function NewInvoicePage() {
         </ol>
       </nav>
 
-      <NewInvoiceForm />
+      <InvoiceForm mode="create" companies={companies} legalEntities={legalEntities} projects={projects} />
     </>
   );
 }

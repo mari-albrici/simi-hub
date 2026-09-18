@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --require ./scripts/register-typescript.cjs --test tests/*.test.cjs",
+    "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.9",

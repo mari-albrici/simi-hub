@@ -1,12 +1,16 @@
+import { ContextDocuments } from "@/components/documents/context-documents";
+import { getAccessScope, requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCompanyById } from "@/lib/data";
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("company.read");
+  const access = await getAccessScope("company");
   const { id } = await params;
   const customer = await getCompanyById(id);
 
-  if (!customer || customer.company_type !== "customer") {
+  if (!customer || !["customer", "both"].includes(customer.company_type)) {
     notFound();
   }
 
@@ -30,7 +34,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             <span>Attivo: {customer.active ? "Sì" : "No"}</span>
           </div>
         </div>
-        <button className="btn btn-dark">Modifica</button>
+        {access.canUpdate && <Link href={`/clienti/${customer.id}/edit`} className="btn btn-dark">Modifica</Link>}
       </div>
 
       <div className="row g-4">
@@ -42,23 +46,14 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <div className="col-md-6"><strong>Email:</strong> {customer.email ?? "-"}</div>
               <div className="col-md-6"><strong>Telefono:</strong> {customer.phone ?? "-"}</div>
               <div className="col-md-6"><strong>Indirizzo:</strong> {customer.address ?? "-"}{customer.city ? `, ${customer.city}` : ""}</div>
-              <div className="col-md-6"><strong>Contatto:</strong> {customer.contact_name ?? "-"}</div>
+
               <div className="col-md-6"><strong>Paese:</strong> {customer.country ?? "-"}</div>
             </div>
           </div>
         </div>
 
-        <div className="col-lg-4">
-          <div className="app-card p-3">
-            <h2 className="h5 mb-3">Quick actions</h2>
-            <div className="d-grid gap-2">
-              <button className="btn btn-outline-dark btn-sm" type="button">Apri documenti</button>
-              <button className="btn btn-outline-dark btn-sm" type="button">Visualizza fatture</button>
-              <button className="btn btn-outline-dark btn-sm" type="button">Contatta cliente</button>
-            </div>
-          </div>
-        </div>
+
       </div>
-    </>
+    <ContextDocuments company={customer.id}/></>
   );
 }

@@ -2,77 +2,17 @@ export const APP_NAME = "SIMI Hub";
 
 export const ALLOWED_EMAIL_DOMAINS = ["simisrl.eu"];
 
-export const DEFAULT_ROLES = [
-  "admin",
-  "administration",
-  "management",
-  "project_manager",
-  "technical",
-  "viewer",
-] as const;
+export const DEFAULT_ROLES = ["admin", "administration", "management", "project_manager", "technical", "viewer", "hr"] as const;
 
+// Mirrored by app_has_permission() in migration 004; parity is tested.
 export const PERMISSION_MATRIX: Record<string, string[]> = {
-  admin: [
-    "project.read",
-    "project.create",
-    "project.update",
-    "project.delete",
-    "document.read",
-    "document.upload",
-    "document.update",
-    "document.delete",
-    "invoice.read",
-    "invoice.create",
-    "invoice.update",
-    "invoice.delete",
-    "company.read",
-    "company.update",
-    "employee.read",
-    "employee.update",
-    "admin.users",
-    "admin.settings",
-  ],
-  administration: [
-    "project.read",
-    "project.create",
-    "project.update",
-    "document.read",
-    "document.upload",
-    "document.update",
-    "invoice.read",
-    "invoice.create",
-    "invoice.update",
-    "company.read",
-    "company.update",
-    "employee.read",
-  ],
-  management: [
-    "project.read",
-    "document.read",
-    "invoice.read",
-    "company.read",
-    "employee.read",
-  ],
-  project_manager: [
-    "project.read",
-    "project.create",
-    "project.update",
-    "document.read",
-    "document.upload",
-    "document.update",
-    "invoice.read",
-    "company.read",
-  ],
-  technical: [
-    "project.read",
-    "project.update",
-    "document.read",
-    "document.upload",
-    "document.update",
-    "document.delete",
-    "company.read",
-  ],
-  viewer: ["project.read", "document.read", "invoice.read", "company.read", "employee.read"],
+  admin: ["project.read", "project.create", "project.update", "project.delete", "document.read", "document.upload", "document.update", "document.delete", "invoice.read", "invoice.create", "invoice.update", "invoice.delete", "company.read", "company.create", "company.update", "company.delete", "employee.read", "employee.update", "admin.users", "admin.settings", "legal_entity.read", "legal_entity.create", "deadline.read", "deadline.write", "dashboard.read", "report.read", "profile.directory"],
+  administration: ["project.read", "project.create", "project.update", "document.read", "document.upload", "document.update", "invoice.read", "invoice.create", "invoice.update", "company.read", "company.create", "company.update", "legal_entity.read", "deadline.read", "deadline.write", "dashboard.read", "report.read", "profile.directory"],
+  management: ["project.read", "document.read", "invoice.read", "company.read", "legal_entity.read", "deadline.read", "dashboard.read", "report.read", "profile.directory"],
+  project_manager: ["project.read", "project.create", "project.update", "document.read", "document.upload", "document.update", "invoice.read", "company.read", "legal_entity.read", "deadline.read", "dashboard.read", "profile.directory"],
+  technical: ["project.read", "project.update", "document.read", "document.upload", "document.update", "company.read", "legal_entity.read", "deadline.read", "profile.directory"],
+  viewer: ["project.read", "document.read", "invoice.read", "company.read", "legal_entity.read", "deadline.read", "dashboard.read", "report.read", "profile.directory"],
+  hr: ["project.read", "document.read", "document.upload", "document.update", "employee.read", "employee.update", "legal_entity.read", "deadline.read", "deadline.write", "profile.directory"],
 };
 
 export const DOCUMENT_CATEGORIES = [
@@ -98,6 +38,7 @@ export const NAV_ITEMS = [
   { label: "Commesse", href: "/commesse" },
   { label: "Documenti", href: "/documenti" },
   { label: "Fatture", href: "/fatture" },
+  { label: "Pagamenti / Incassi", href: "/pagamenti" },
   { label: "Clienti", href: "/clienti" },
   { label: "Fornitori", href: "/fornitori" },
   { label: "Scadenze", href: "/scadenze" },

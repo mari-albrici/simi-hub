@@ -1,413 +1,105 @@
 "use server";
-
+import { uploadDocumentFile } from "@/lib/document-upload-workflow";
+import { findDocumentDuplicates } from "@/lib/documents";
+import { documentHash,validateDocumentFile } from "@/lib/files";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { customers, invoices, projects, suppliers } from "@/lib/mock-data";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { authorizedClient } from "@/lib/permissions";
+import { AppError, checkDatabase, publicError } from "@/lib/errors";
+import { companyFormSchema, invoiceSchema, legalEntitySchema, projectFormSchema, uuidSchema } from "@/lib/validations";
+import type { PermissionName } from "@/types";
 
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "item";
+async function mutation(path: string, message: string, work: () => Promise<void>) {
+  try { await work(); }
+  catch (error) { const failure = publicError(error); redirect(`${path}?error=${encodeURIComponent(failure.message)}&error_kind=${failure.kind}`); }
+  revalidatePath(path); revalidatePath("/dashboard");
+  revalidatePath("/fatture", "layout"); revalidatePath("/scadenze", "layout"); revalidatePath("/pagamenti");
+  redirect(`${path}?success=${encodeURIComponent(message)}`);
 }
-
-function toNullableDate(value: string | null | undefined): string | null {
-  if (!value || value === "") return null;
-  return value;
+function jsonArray(data: FormData, key: string): unknown[] {
+  try { const value: unknown = JSON.parse(String(data.get(key) ?? "[]")); if (Array.isArray(value)) return value; } catch { /* validation below */ }
+  throw new AppError("validation", `Formato non valido: ${key}`);
 }
-
-function withSuccess(path: string, message: string): string {
-  return `${path}?success=${encodeURIComponent(message)}`;
-}
-
-async function createProjectInSupabase(formData: FormData) {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return false;
-
-  const payload = {
-    project_code: String(formData.get("project_code") ?? "PRJ-NEW"),
-    name: String(formData.get("name") ?? "Nuova commessa"),
-    description: String(formData.get("description") ?? ""),
-    country: String(formData.get("country") ?? "Italia"),
-    city: String(formData.get("city") ?? "Milano"),
-    address: String(formData.get("address") ?? ""),
-    customer_id: null,
-    status: (String(formData.get("status") ?? "draft") as "draft" | "active" | "suspended" | "completed" | "archived"),
-    opening_date: toNullableDate(String(formData.get("opening_date") ?? "")),
-    expected_closing_date: null,
-    closing_date: null,
-    project_manager_id: null,
-    notes: String(formData.get("notes") ?? ""),
-  };
-
-  const { error } = await supabase.from("projects").insert(payload);
-  return !error;
-}
-
-async function updateProjectInSupabase(formData: FormData) {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return false;
-
-  const id = String(formData.get("id") ?? "");
-  if (!id) return false;
-
-  const payload = {
-    project_code: String(formData.get("project_code") ?? "PRJ-NEW"),
-    name: String(formData.get("name") ?? "Nuova commessa"),
-    description: String(formData.get("description") ?? ""),
-    country: String(formData.get("country") ?? "Italia"),
-    city: String(formData.get("city") ?? "Milano"),
-    address: String(formData.get("address") ?? ""),
-    status: (String(formData.get("status") ?? "draft") as "draft" | "active" | "suspended" | "completed" | "archived"),
-    opening_date: toNullableDate(String(formData.get("opening_date") ?? "")),
-    notes: String(formData.get("notes") ?? ""),
-  };
-
-  const { error } = await supabase.from("projects").update(payload).eq("id", id);
-  return !error;
-}
-
-async function deleteProjectInSupabase(id: string) {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return false;
-
-  const { error } = await supabase.from("projects").delete().eq("id", id);
-  return !error;
-}
-
-async function createInvoiceInSupabase(formData: FormData) {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return false;
-
-  const { data: legalEntity } = await supabase.from("legal_entities").select("id").limit(1).maybeSingle();
-  const payload = {
-    invoice_type: (String(formData.get("invoice_type") ?? "purchase") as "purchase" | "sale"),
-    invoice_number: String(formData.get("invoice_number") ?? `INV-${Date.now()}`),
-    invoice_date: toNullableDate(String(formData.get("invoice_date") ?? "")),
-    received_date: null,
-    supplier_id: null,
-    customer_id: null,
-    legal_entity_id: legalEntity?.id ?? null,
-    project_id: null,
-    amount_net: Number(formData.get("amount_net") ?? Number(formData.get("amount_total") ?? 0)),
-    vat_amount: Number(formData.get("vat_amount") ?? 0),
-    amount_total: Number(formData.get("amount_total") ?? 0),
-    due_date: toNullableDate(String(formData.get("due_date") ?? "")),
-    payment_date: null,
-    status: (String(formData.get("status") ?? "to_register") as any),
-    document_id: null,
-    notes: String(formData.get("notes") ?? ""),
-  };
-
-  const { error } = await supabase.from("invoices").insert(payload);
-  return !error;
-}
-
-async function updateInvoiceInSupabase(formData: FormData) {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return false;
-
-  const id = String(formData.get("id") ?? "");
-  if (!id) return false;
-
-  const payload = {
-    invoice_type: (String(formData.get("invoice_type") ?? "purchase") as "purchase" | "sale"),
-    invoice_number: String(formData.get("invoice_number") ?? "INV-NEW"),
-    invoice_date: toNullableDate(String(formData.get("invoice_date") ?? "")),
-    amount_net: Number(formData.get("amount_net") ?? Number(formData.get("amount_total") ?? 0)),
-    vat_amount: Number(formData.get("vat_amount") ?? 0),
-    amount_total: Number(formData.get("amount_total") ?? 0),
-    due_date: toNullableDate(String(formData.get("due_date") ?? "")),
-    status: (String(formData.get("status") ?? "to_register") as any),
-    notes: String(formData.get("notes") ?? ""),
-  };
-
-  const { error } = await supabase.from("invoices").update(payload).eq("id", id);
-  return !error;
-}
-
-async function deleteInvoiceInSupabase(id: string) {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return false;
-
-  const { error } = await supabase.from("invoices").delete().eq("id", id);
-  return !error;
-}
-
-async function createCompanyInSupabase(formData: FormData) {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return false;
-
-  const type = String(formData.get("company_type") ?? "customer");
-  const payload = {
-    company_type: type,
-    business_name: String(formData.get("business_name") ?? "Nuova azienda"),
-    short_name: String(formData.get("short_name") ?? ""),
-    vat_number: String(formData.get("vat_number") ?? ""),
-    tax_code: String(formData.get("tax_code") ?? ""),
-    country: String(formData.get("country") ?? "Italia"),
-    address: String(formData.get("address") ?? ""),
-    postal_code: String(formData.get("postal_code") ?? ""),
-    city: String(formData.get("city") ?? "Milano"),
-    province: String(formData.get("province") ?? ""),
-    email: String(formData.get("email") ?? ""),
-    pec: String(formData.get("pec") ?? ""),
-    phone: String(formData.get("phone") ?? ""),
-    website: String(formData.get("website") ?? ""),
-    notes: String(formData.get("notes") ?? ""),
-    active: true,
-  };
-
-  const { error } = await supabase.from("companies").insert(payload);
-  return !error;
-}
-
-async function updateCompanyInSupabase(formData: FormData) {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return false;
-
-  const id = String(formData.get("id") ?? "");
-  if (!id) return false;
-
-  const payload = {
-    company_type: String(formData.get("company_type") ?? "customer"),
-    business_name: String(formData.get("business_name") ?? "Nuova azienda"),
-    vat_number: String(formData.get("vat_number") ?? ""),
-    country: String(formData.get("country") ?? "Italia"),
-    address: String(formData.get("address") ?? ""),
-    city: String(formData.get("city") ?? "Milano"),
-    email: String(formData.get("email") ?? ""),
-    phone: String(formData.get("phone") ?? ""),
-    active: formData.get("active") === "on" || true,
-    notes: String(formData.get("notes") ?? ""),
-  };
-
-  const { error } = await supabase.from("companies").update(payload).eq("id", id);
-  return !error;
-}
-
-async function deleteCompanyInSupabase(id: string, type: "customer" | "supplier") {
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) return false;
-
-  const { error } = await supabase.from("companies").delete().eq("id", id).eq("company_type", type);
-  return !error;
-}
-
-export async function createProjectAction(formData: FormData): Promise<void> {
-  const ok = await createProjectInSupabase(formData);
-  if (!ok) {
-    const payload = {
-      id: `proj-${Date.now()}`,
-      project_code: String(formData.get("project_code") ?? "PRJ-NEW"),
-      name: String(formData.get("name") ?? "Nuova commessa"),
-      customer_name: String(formData.get("customer_name") ?? "Cliente nuovo"),
-      country: String(formData.get("country") ?? "Italia"),
-      city: String(formData.get("city") ?? "Milano"),
-      status: (String(formData.get("status") ?? "draft") as "draft" | "active" | "suspended" | "completed" | "archived"),
-      opening_date: String(formData.get("opening_date") ?? new Date().toISOString().slice(0, 10)),
-      project_manager_name: String(formData.get("project_manager_name") ?? "Team SIMI"),
-    };
-
-    projects.unshift(payload);
+async function saveInvoice(form: FormData, edit: boolean) {
+  const supabase = await authorizedClient(edit ? "invoice.update" : "invoice.create");
+  let uploadedDocumentId: string | null = null;
+  const pdf = form.get("pdf_file");
+  if (pdf instanceof File && pdf.size > 0) {
+    if (pdf.type !== "application/pdf" || pdf.size > 10 * 1024 * 1024) throw new AppError("validation", "Il PDF deve essere valido e non superare 10 MB.");
+    await validateDocumentFile(pdf);
+    const duplicates=await findDocumentDuplicates(await documentHash(pdf));
+    if(duplicates.length&&form.get("acknowledge_pdf_duplicate")!=="1")throw new AppError("validation",`Questo file risulta già presente nell'archivio: ${duplicates.map(d=>`${d.title||d.original_filename} (/documenti/${d.id})`).join(", ")}. Collega il documento esistente dalla sua scheda o conferma il duplicato nel modulo fattura.`);
+    const category=await supabase.from("document_categories").select("id").eq("code","07").maybeSingle();checkDatabase(category.error);
+    const uploaded=await uploadDocumentFile(supabase,pdf,{title:`Fattura ${String(form.get("invoice_number")||pdf.name)}`,legal_entity_id:String(form.get("legal_entity_id")),category_id:category.data?.id||null,document_date:form.get("invoice_date")||null,status:"valid",access_scope:"general"},{typeName:"Fattura",acknowledgeDuplicate:form.get("acknowledge_pdf_duplicate")==="1"});
+    uploadedDocumentId=uploaded.documentId;
   }
-
-  revalidatePath("/commesse");
-  redirect(withSuccess("/commesse", "Commessa creata."));
+  const type = String(form.get("invoice_type"));
+  const counterpartyId = String(form.get("counterparty_id") ?? "");
+  const newName = String(form.get("counterparty_new_name") ?? "").trim();
+  const payload = invoiceSchema.parse({
+    id: edit ? form.get("id") : undefined, expected_updated_at: edit ? form.get("expected_updated_at") : undefined,
+    invoice_type: type, invoice_number: form.get("invoice_number"), legal_entity_id: form.get("legal_entity_id"),
+    counterparty_id: counterpartyId,
+    new_counterparty: !counterpartyId && newName ? {
+      company_type: type === "purchase" ? "supplier" : "customer", business_name: newName,
+      vat_number: form.get("counterparty_new_vat"), address: form.get("counterparty_new_address"), iban: form.get("counterparty_new_iban"),
+      country: "", email: "",
+    } : null,
+    invoice_date: form.get("invoice_date"), received_date: form.get("received_date"), registration_date: form.get("registration_date"), due_date: form.get("due_date"), status: form.get("status"), currency: String(form.get("currency") || "EUR").toUpperCase(), vat_treatment: form.get("vat_treatment"),
+    amount_net: Number(form.get("amount_net")), vat_amount: Number(form.get("vat_amount")), amount_total: Number(form.get("amount_total")),
+    vat_rate: form.get("vat_rate") ? Number(form.get("vat_rate")) : null,
+    vat_exempt_reason: String(form.get("vat_exempt_reason") ?? "").trim() || null,
+    payment_method: form.get("payment_method") || null, notes: String(form.get("notes") ?? ""),
+    lines: jsonArray(form, "lines_json"), installments: jsonArray(form, "installments_json"), project_ids: form.getAll("project_ids"), document_id: uploadedDocumentId ?? form.get("document_id"),
+  });
+  const result = await supabase.rpc("save_invoice_phase1", { payload });
+  checkDatabase(result.error, "Salvataggio fattura");
+  if (!result.data) throw new AppError("database", "Salvataggio non confermato.");
 }
-
-export async function updateProjectAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "");
-  const ok = await updateProjectInSupabase(formData);
-
-  if (!ok) {
-    const index = projects.findIndex((project) => project.id === id);
-
-    if (index >= 0) {
-      projects[index] = {
-        ...projects[index],
-        project_code: String(formData.get("project_code") ?? projects[index].project_code),
-        name: String(formData.get("name") ?? projects[index].name),
-        customer_name: String(formData.get("customer_name") ?? projects[index].customer_name ?? "Cliente nuovo"),
-        country: String(formData.get("country") ?? projects[index].country ?? "Italia"),
-        city: String(formData.get("city") ?? projects[index].city ?? "Milano"),
-        status: (String(formData.get("status") ?? projects[index].status) as "draft" | "active" | "suspended" | "completed" | "archived"),
-        opening_date: String(formData.get("opening_date") ?? projects[index].opening_date ?? new Date().toISOString().slice(0, 10)),
-        project_manager_name: String(formData.get("project_manager_name") ?? projects[index].project_manager_name ?? "Team SIMI"),
-      };
-    }
-  }
-
-  revalidatePath("/commesse");
-  redirect(withSuccess("/commesse", "Modifiche salvate."));
+export async function createInvoiceAction(form: FormData) { return mutation("/fatture", "Fattura creata.", () => saveInvoice(form, false)); }
+export async function updateInvoiceAction(form: FormData) { return mutation("/fatture", "Modifiche salvate.", () => saveInvoice(form, true)); }
+async function archive(kind: "project" | "invoice" | "company", id: string, permission: PermissionName) {
+  const supabase = await authorizedClient(permission);
+  const result = await supabase.rpc("archive_record", { kind, record_id: uuidSchema.parse(id) });
+  checkDatabase(result.error, "Archiviazione");
 }
-
-export async function deleteProjectAction(id: string): Promise<void> {
-  const ok = await deleteProjectInSupabase(id);
-  if (!ok) {
-    const nextProjects = projects.filter((project) => project.id !== id);
-    projects.splice(0, projects.length, ...nextProjects);
-  }
-
-  revalidatePath("/commesse");
-  redirect(withSuccess("/commesse", "Commessa eliminata."));
+export async function deleteInvoiceAction(id: string) { return mutation("/fatture", "Fattura archiviata.", () => archive("invoice", id, "invoice.delete")); }
+export async function saveFinancialMovementAction(form: FormData) {
+ const invoiceId=uuidSchema.safeParse(form.get("primary_invoice_id"));
+ const destination=invoiceId.success?`/fatture/${invoiceId.data}`:"/pagamenti";
+ return mutation(destination, "Movimento registrato.", async () => {
+  const supabase = await authorizedClient("invoice.update");
+  let allocations: unknown[]; try { allocations = JSON.parse(String(form.get("allocations_json") ?? "[]")); } catch { throw new AppError("validation", "Allocazioni non valide."); }
+  const primaryInvoice = String(form.get("primary_invoice_id") || "");
+  if (primaryInvoice) allocations = [{ invoice_id: primaryInvoice, installment_id: form.get("installment_id") || null, amount: Number(form.get("amount")) }];
+  const payload = { id: form.get("id") || null, direction: form.get("direction"), legal_entity_id: form.get("legal_entity_id"), counterparty_id: form.get("counterparty_id") || null, movement_date: form.get("movement_date"), amount: Number(form.get("amount")), currency: String(form.get("currency") || "EUR").toUpperCase(), payment_method: form.get("payment_method") || null, reference: form.get("reference") || null, account_id: form.get("account_id") || null, notes: form.get("notes") || null, allocations };
+  const result = await supabase.rpc("save_financial_movement", { payload }); checkDatabase(result.error,"Salvataggio movimento"); if (!result.data) throw new AppError("database","Movimento non confermato.");
+}); }
+export async function archiveFinancialMovementAction(id: string) { return mutation("/pagamenti", "Movimento archiviato.", async () => { const supabase=await authorizedClient("invoice.delete"); const result=await supabase.rpc("archive_financial_movement",{movement:uuidSchema.parse(id)}); checkDatabase(result.error,"Archiviazione movimento"); }); }
+export async function deleteProjectAction(id: string) { return mutation("/commesse", "Commessa archiviata.", () => archive("project", id, "project.delete")); }
+export async function deleteCompanyAction(id: string, type: "customer" | "supplier") { return mutation(type === "supplier" ? "/fornitori" : "/clienti", "Anagrafica archiviata.", () => archive("company", id, "company.delete")); }
+async function saveProject(form: FormData, edit: boolean) {
+  const supabase = await authorizedClient(edit ? "project.update" : "project.create");
+  const payload = projectFormSchema.parse(Object.fromEntries(form));
+  const result = edit
+    ? await supabase.from("projects").update(payload).eq("id", uuidSchema.parse(form.get("id"))).is("archived_at", null).select("id").single()
+    : await supabase.from("projects").insert(payload).select("id").single();
+  checkDatabase(result.error, "Salvataggio commessa");
 }
-
-export async function createInvoiceAction(formData: FormData): Promise<void> {
-  const ok = await createInvoiceInSupabase(formData);
-  if (!ok) {
-    const id = `inv-${Date.now()}`;
-    const invoice = {
-      id,
-      invoice_number: String(formData.get("invoice_number") ?? `INV-${Date.now()}`),
-      invoice_type: (String(formData.get("invoice_type") ?? "purchase") as "purchase" | "sale"),
-      status: (String(formData.get("status") ?? "to_register") as any),
-      amount_total: Number(formData.get("amount_total") ?? 0),
-      invoice_date: String(formData.get("invoice_date") ?? new Date().toISOString().slice(0, 10)),
-      due_date: String(formData.get("due_date") ?? new Date().toISOString().slice(0, 10)),
-      customer_name: String(formData.get("customer_name") ?? "Cliente nuovo"),
-      project_code: String(formData.get("project_code") ?? "C-NEW"),
-      company_name: String(formData.get("company_name") ?? "SIMI Italia"),
-    };
-
-    invoices.unshift(invoice);
-  }
-
-  revalidatePath("/fatture");
-  redirect(withSuccess("/fatture", "Fattura creata."));
+export async function createProjectAction(form: FormData) { return mutation("/commesse", "Commessa creata.", () => saveProject(form, false)); }
+export async function updateProjectAction(form: FormData) { return mutation("/commesse", "Modifiche salvate.", () => saveProject(form, true)); }
+async function saveCompany(form: FormData, edit: boolean) {
+  const supabase = await authorizedClient(edit ? "company.update" : "company.create");
+  const payload = companyFormSchema.parse(Object.fromEntries(form));
+  const result = edit
+    ? await supabase.from("companies").update(payload).eq("id", uuidSchema.parse(form.get("id"))).is("archived_at", null).select("id").single()
+    : await supabase.from("companies").insert(payload).select("id").single();
+  checkDatabase(result.error, "Salvataggio anagrafica");
 }
-
-export async function updateInvoiceAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "");
-  const ok = await updateInvoiceInSupabase(formData);
-
-  if (!ok) {
-    const index = invoices.findIndex((invoice) => invoice.id === id);
-
-    if (index >= 0) {
-      invoices[index] = {
-        ...invoices[index],
-        invoice_number: String(formData.get("invoice_number") ?? invoices[index].invoice_number),
-        invoice_type: (String(formData.get("invoice_type") ?? invoices[index].invoice_type) as "purchase" | "sale"),
-        status: (String(formData.get("status") ?? invoices[index].status) as any),
-        amount_total: Number(formData.get("amount_total") ?? invoices[index].amount_total),
-        invoice_date: String(formData.get("invoice_date") ?? invoices[index].invoice_date ?? new Date().toISOString().slice(0, 10)),
-        due_date: String(formData.get("due_date") ?? invoices[index].due_date ?? new Date().toISOString().slice(0, 10)),
-        customer_name: String(formData.get("customer_name") ?? invoices[index].customer_name),
-        project_code: String(formData.get("project_code") ?? invoices[index].project_code),
-        company_name: String(formData.get("company_name") ?? invoices[index].company_name),
-      };
-    }
-  }
-
-  revalidatePath("/fatture");
-  redirect(withSuccess("/fatture", "Modifiche salvate."));
-}
-
-export async function deleteInvoiceAction(id: string): Promise<void> {
-  const ok = await deleteInvoiceInSupabase(id);
-  if (!ok) {
-    const nextInvoices = invoices.filter((invoice) => invoice.id !== id);
-    invoices.splice(0, invoices.length, ...nextInvoices);
-  }
-
-  revalidatePath("/fatture");
-  redirect(withSuccess("/fatture", "Fattura eliminata."));
-}
-
-export async function createCompanyAction(formData: FormData): Promise<void> {
-  const ok = await createCompanyInSupabase(formData);
-  if (!ok) {
-    const type = String(formData.get("company_type") ?? "customer");
-    const payload = {
-      id: `company-${Date.now()}`,
-      business_name: String(formData.get("business_name") ?? "Nuova azienda"),
-      company_type: type as "customer" | "supplier" | "both",
-      vat_number: String(formData.get("vat_number") ?? ""),
-      country: String(formData.get("country") ?? "Italia"),
-      city: String(formData.get("city") ?? "Milano"),
-      address: String(formData.get("address") ?? ""),
-      email: String(formData.get("email") ?? ""),
-      phone: String(formData.get("phone") ?? ""),
-      active: true,
-      contact_name: String(formData.get("contact_name") ?? ""),
-    };
-
-    if (type === "customer") {
-      customers.unshift(payload);
-      revalidatePath("/clienti");
-      redirect(withSuccess("/clienti", "Cliente creato."));
-    }
-
-    suppliers.unshift(payload);
-    revalidatePath("/fornitori");
-    redirect(withSuccess("/fornitori", "Fornitore creato."));
-  }
-
-  const createdPath = String(formData.get("company_type") === "supplier" ? "/fornitori" : "/clienti");
-  revalidatePath(createdPath);
-  redirect(withSuccess(createdPath, formData.get("company_type") === "supplier" ? "Fornitore creato." : "Cliente creato."));
-}
-
-export async function updateCompanyAction(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "");
-  const type = String(formData.get("company_type") ?? "customer");
-  const ok = await updateCompanyInSupabase(formData);
-
-  if (!ok) {
-    const list = type === "supplier" ? suppliers : customers;
-    const index = list.findIndex((company) => company.id === id);
-
-    if (index >= 0) {
-      list[index] = {
-        ...list[index],
-        business_name: String(formData.get("business_name") ?? list[index].business_name),
-        vat_number: String(formData.get("vat_number") ?? list[index].vat_number ?? ""),
-        country: String(formData.get("country") ?? list[index].country ?? "Italia"),
-        city: String(formData.get("city") ?? list[index].city ?? "Milano"),
-        address: String(formData.get("address") ?? list[index].address ?? ""),
-        email: String(formData.get("email") ?? list[index].email ?? ""),
-        phone: String(formData.get("phone") ?? list[index].phone ?? ""),
-        active: formData.get("active") === "on" || list[index].active,
-        contact_name: String(formData.get("contact_name") ?? list[index].contact_name ?? ""),
-      };
-    }
-  }
-
-  revalidatePath(type === "supplier" ? "/fornitori" : "/clienti");
-  redirect(withSuccess(type === "supplier" ? "/fornitori" : "/clienti", "Modifiche salvate."));
-}
-
-export async function deleteCompanyAction(id: string, type: "customer" | "supplier") {
-  const ok = await deleteCompanyInSupabase(id, type);
-  if (!ok) {
-    const list = type === "supplier" ? suppliers : customers;
-    const next = list.filter((company) => company.id !== id);
-    if (type === "supplier") {
-      suppliers.splice(0, suppliers.length, ...next);
-      revalidatePath("/fornitori");
-      redirect(withSuccess("/fornitori", "Fornitore eliminato."));
-    }
-
-    customers.splice(0, customers.length, ...next);
-  }
-
-  revalidatePath(type === "supplier" ? "/fornitori" : "/clienti");
-  redirect(withSuccess(type === "supplier" ? "/fornitori" : "/clienti", type === "supplier" ? "Fornitore eliminato." : "Cliente eliminato."));
-}
-
-export async function makeUniqueSlug(value: string, collection: string[]) {
-  const base = slugify(value);
-  const used = new Set(collection);
-  let candidate = base;
-  let counter = 1;
-
-  while (used.has(candidate)) {
-    candidate = `${base}-${counter}`;
-    counter += 1;
-  }
-
-  return candidate;
-}
+export async function createCompanyAction(form: FormData) { return mutation(form.get("company_type") === "supplier" ? "/fornitori" : "/clienti", "Anagrafica creata.", () => saveCompany(form, false)); }
+export async function updateCompanyAction(form: FormData) { return mutation(form.get("company_type") === "supplier" ? "/fornitori" : "/clienti", "Modifiche salvate.", () => saveCompany(form, true)); }
+export async function createLegalEntityAction(form: FormData) { return mutation("/aziende", "Società creata.", async () => {
+  const supabase = await authorizedClient("legal_entity.create");
+  const result = await supabase.from("legal_entities").insert(legalEntitySchema.parse(Object.fromEntries(form))).select("id").single();
+  checkDatabase(result.error, "Salvataggio società");
+}); }

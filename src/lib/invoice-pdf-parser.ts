@@ -1,13 +1,18 @@
 "use server";
 
 import os from "os";
+import { parsePdfAmount } from "@/lib/money";
+import { dateSchema } from "@/lib/validations";
+import { requirePermission } from "@/lib/permissions";
+import { publicError } from "@/lib/errors";
 import { getDocumentProxy, extractText, renderPageAsImage } from "unpdf";
 import { createWorker } from "tesseract.js";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const MIN_TEXT_LENGTH = 10;
-const MAX_OCR_PAGES = 3;
+const MAX_OCR_PAGES = 1;
 const OCR_RENDER_SCALE = 2;
+const OCR_TIMEOUT_MS = 45_000;
 
 export type InvoiceExtraction = {
   invoice_number: string | null;
@@ -21,6 +26,7 @@ export type InvoiceExtraction = {
   vat_rate: number | null;
   vat_amount: number | null;
   amount_total: number | null;
+  currency: string | null;
   notes: string | null;
 };
 
@@ -28,22 +34,8 @@ export type ExtractInvoiceResult =
   | { success: true; data: InvoiceExtraction }
   | { success: false; error: string };
 
-// Converte importi in formato italiano ("1.220,00" / "1220,00" / "1220.00") in number.
-function parseAmount(raw: string | undefined): number | null {
-  if (!raw) return null;
-  const match = raw.match(/\d{1,3}(?:[.\s]\d{3})*(?:,\d+)?|\d+(?:[.,]\d+)?/);
-  if (!match) return null;
-
-  let numStr = match[0].replace(/\s/g, "");
-  if (numStr.includes(",") && numStr.includes(".")) {
-    numStr = numStr.replace(/\./g, "").replace(",", ".");
-  } else if (numStr.includes(",")) {
-    numStr = numStr.replace(",", ".");
-  }
-
-  const value = parseFloat(numStr);
-  return Number.isFinite(value) ? value : null;
-}
+// Current extraction labels are Italian: grouping is interpreted explicitly as Italian.
+function parseAmount(raw: string | undefined) { return parsePdfAmount(raw, "it"); }
 
 // Converte date italiane (gg/mm/aaaa, gg-mm-aaaa, gg.mm.aaaa) in formato ISO YYYY-MM-DD.
 function parseDate(raw: string | undefined): string | null {
@@ -53,7 +45,8 @@ function parseDate(raw: string | undefined): string | null {
 
   const [, d, m, yRaw] = match;
   const y = yRaw.length === 2 ? `20${yRaw}` : yRaw;
-  return `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  const parsed = dateSchema.safeParse(`${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`);
+  return parsed.success ? parsed.data : null;
 }
 
 function cleanText(raw: string | undefined): string | null {
@@ -66,6 +59,24 @@ function cleanText(raw: string | undefined): string | null {
 function containsSimi(value: string | null): boolean {
   if (!value) return false;
   return /simi/i.test(value.replace(/[^a-z]/gi, ""));
+}
+
+// Evita che l'OCR (download del modello lingua + riconoscimento) blocchi la function
+// serverless fino al suo limite di durata: fallisce in modo controllato entro OCR_TIMEOUT_MS.
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
 }
 
 // Fallback per PDF con testo non estraibile (scansioni o font senza mappatura Unicode,
@@ -214,6 +225,7 @@ function parseInvoiceText(text: string): InvoiceExtraction {
     vat_rate: null,
     vat_amount: null,
     amount_total: null,
+    currency: null,
     notes: null,
   };
 
@@ -223,6 +235,8 @@ function parseInvoiceText(text: string): InvoiceExtraction {
   }
 
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const currencyMatch = text.match(/\b(EUR|USD|GBP|CHF|CAD|AUD)\b|([€$£])/i);
+  if (currencyMatch) result.currency = (currencyMatch[1] ?? (currencyMatch[2] === "€" ? "EUR" : currencyMatch[2] === "$" ? "USD" : "GBP")).toUpperCase();
 
   for (const line of lines) {
     let match: RegExpMatchArray | null;
@@ -289,6 +303,7 @@ function parseInvoiceText(text: string): InvoiceExtraction {
 }
 
 export async function extractInvoiceFromPdfAction(formData: FormData): Promise<ExtractInvoiceResult> {
+  try { await requirePermission("invoice.create"); } catch (error) { return { success: false, error: publicError(error).message }; }
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
@@ -311,7 +326,7 @@ export async function extractInvoiceFromPdfAction(formData: FormData): Promise<E
 
     if (!text || text.trim().length < MIN_TEXT_LENGTH) {
       try {
-        text = await ocrExtractText(pdf);
+        text = await withTimeout(ocrExtractText(pdf), OCR_TIMEOUT_MS, "OCR timeout");
         usedOcr = true;
       } catch (ocrError) {
         console.error("Errore OCR fattura PDF:", ocrError);

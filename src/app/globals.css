@@ -183,3 +183,9 @@ a:hover .kpi-card {
     min-height: auto;
   }
 }
+
+/* Allow wide administrative tables to scroll inside the page, keeping header actions visible. */
+.portal-shell > .flex-grow-1,
+.portal-shell main {
+  min-width: 0;
+}

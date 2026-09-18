@@ -1,9 +1,12 @@
+import { getAccessScope, requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { deleteCompanyAction } from "@/lib/crud";
 import { getCompaniesByType } from "@/lib/data";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 
 export default async function CustomersPage() {
+  await requirePagePermission("company.read");
+  const access = await getAccessScope("company");
   const customers = await getCompaniesByType("customer");
 
   return (
@@ -13,7 +16,7 @@ export default async function CustomersPage() {
           <h1 className="h3 mb-1">Clienti</h1>
           <p className="text-muted mb-0">Anagrafica clienti e relativi contatti.</p>
         </div>
-        <Link href="/clienti/new" className="btn btn-dark">+ Nuovo cliente</Link>
+        {access.canCreate && <Link href="/clienti/new" className="btn btn-dark">+ Nuovo cliente</Link>}
       </div>
 
       <div className="app-card p-3">
@@ -31,6 +34,7 @@ export default async function CustomersPage() {
               </tr>
             </thead>
             <tbody>
+              {customers.length === 0 && <tr><td colSpan={9} className="text-muted py-4">Nessun record presente.</td></tr>}
               {customers.map((customer) => (
                 <tr key={customer.id}>
                   <td>
@@ -50,15 +54,15 @@ export default async function CustomersPage() {
                   <td className="text-end">
                     <div className="d-flex gap-2 justify-content-end">
                       <Link href={`/clienti/${customer.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>
-                      <Link href={`/clienti/${customer.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>
-                      <form action={async () => {
+                      {access.canUpdate && <Link href={`/clienti/${customer.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>}
+                      {access.canDelete && <form action={async () => {
                         "use server";
                         await deleteCompanyAction(customer.id, "customer");
                       }}>
-                        <ConfirmSubmitButton confirmMessage={`Eliminare il cliente "${customer.business_name}"?`} pendingLabel="Eliminazione…">
-                          Elimina
+                        <ConfirmSubmitButton confirmMessage={`Archiviare il cliente "${customer.business_name}"?`} pendingLabel="Archiviazione…">
+                          Archivia
                         </ConfirmSubmitButton>
-                      </form>
+                      </form>}
                     </div>
                   </td>
                 </tr>

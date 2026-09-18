@@ -1,100 +1,42 @@
 "use server";
-
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-
-export async function uploadDocumentAction(formData: FormData): Promise<void> {
-  const supabase = await createServerSupabaseClient();
-  const file = formData.get("file");
-
-  if (!supabase) {
-    redirect(`/documenti?error=${encodeURIComponent("Upload non disponibile: configurazione Supabase mancante.")}`);
-  }
-  if (!(file instanceof File) || file.size === 0) {
-    redirect(`/documenti?error=${encodeURIComponent("Seleziona un file valido.")}`);
-  }
-
-  const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, "_");
-  const storedFilename = `${Date.now()}-${safeName}`;
-  const storagePath = `documents/${storedFilename}`;
-
-  const { error: uploadError } = await supabase.storage.from("simi-documents").upload(storagePath, file, {
-    cacheControl: "3600",
-    upsert: false,
-  });
-
-  if (uploadError) {
-    redirect(`/documenti?error=${encodeURIComponent(`Caricamento fallito: ${uploadError.message}`)}`);
-  }
-
-  const { data: userData } = await supabase.auth.getUser();
-
-  const { error: insertError } = await supabase.from("documents").insert({
-    original_filename: file.name,
-    stored_filename: storedFilename,
-    storage_path: storagePath,
-    mime_type: file.type || null,
-    file_size: file.size,
-    status: "draft",
-    created_by: userData?.user?.id ?? null,
-  });
-
-  if (insertError) {
-    redirect(`/documenti?error=${encodeURIComponent(`File caricato ma metadati non salvati: ${insertError.message}`)}`);
-  }
-
-  revalidatePath("/documenti");
-  redirect(`/documenti?success=${encodeURIComponent("Documento caricato.")}`);
+import { authorizedClient } from "@/lib/permissions";
+import { AppError,checkDatabase,publicError } from "@/lib/errors";
+import { documentFormSchema,documentContextSchema } from "@/lib/document-validation";
+import { documentHash,validateDocumentFile } from "@/lib/files";
+import { findDocumentDuplicates,getArchiveDocument } from "@/lib/documents";
+import { uploadDocumentFile } from "@/lib/document-upload-workflow";
+import { z } from "zod";
+export type UploadState={error?:string;duplicates?:{id:string;title:string;where:string;archived:boolean}[]};
+function refreshDocuments(){revalidatePath("/documenti","layout");revalidatePath("/scadenze","layout");revalidatePath("/dashboard");revalidatePath("/commesse","layout");revalidatePath("/clienti","layout");revalidatePath("/fornitori","layout");revalidatePath("/fatture","layout");}
+export async function uploadDocumentAction(_previous:UploadState,form:FormData):Promise<UploadState>{
+ let target="";
+ try{
+ const db=await authorizedClient("document.upload"),context=documentContextSchema.parse(Object.fromEntries(form));
+ const docId=form.get("document_id")?z.uuid().parse(form.get("document_id")):undefined;
+ const metadata=docId?await getArchiveDocument(docId):documentFormSchema.parse(Object.fromEntries(form));
+ if(!metadata)throw new AppError("validation","Documento non disponibile.");
+ if(form.get("intent")?.toString().startsWith("reuse:")){
+ if(docId)throw new AppError("validation","Per una versione usa il caricamento con conferma.");
+ target=z.uuid().parse(String(form.get("intent")).slice(6));
+ const result=await db.rpc("link_document_context",{doc:target,...context});checkDatabase(result.error,"Collegamento documento esistente");
+ }else{
+ const file=form.get("file");if(!(file instanceof File))throw new AppError("validation","Seleziona un file.");await validateDocumentFile(file);
+ const duplicates=await findDocumentDuplicates(await documentHash(file));
+ if(duplicates.length&&form.get("acknowledge_duplicate")!=="1")return {duplicates:duplicates.map(d=>({id:d.id,title:d.title||d.original_filename,where:[d.entity_name,...d.projects.map(x=>x.label),...d.companies.map(x=>x.label),...d.invoices.map(x=>x.label)].filter(Boolean).join(" · "),archived:!!d.archived_at}))};
+ let typeName="Documento";if(metadata.category_id){const c=await db.from("document_categories").select("name").eq("id",metadata.category_id).single();checkDatabase(c.error);typeName=c.data?.name||typeName;}
+ const result=await uploadDocumentFile(db,file,{...metadata},{documentId:docId,label:String(form.get("version_label")||""),notes:String(form.get("version_notes")||""),acknowledgeDuplicate:form.get("acknowledge_duplicate")==="1",typeName,...context});target=result.documentId;
+ }
+ }catch(e){return {error:publicError(e).message};}
+ refreshDocuments();redirect(`/documenti/${target}?success=Documento%20salvato`);
 }
-
-export async function updateDocumentAction(formData: FormData): Promise<void> {
-  const supabase = await createServerSupabaseClient();
-  const id = String(formData.get("id") ?? "");
-
-  if (!supabase || !id) {
-    redirect(`/documenti?error=${encodeURIComponent("Aggiornamento non riuscito.")}`);
-  }
-
-  const title = String(formData.get("title") ?? "").trim();
-  const expiryDate = String(formData.get("expiry_date") ?? "").trim();
-
-  const { error } = await supabase
-    .from("documents")
-    .update({
-      title: title || null,
-      expiry_date: expiryDate || null,
-    })
-    .eq("id", id);
-
-  if (error) {
-    redirect(`/documenti?error=${encodeURIComponent(`Aggiornamento fallito: ${error.message}`)}`);
-  }
-
-  revalidatePath("/documenti");
-  redirect(`/documenti?success=${encodeURIComponent("Documento aggiornato.")}`);
+async function mutateDocument(form:FormData,work:(id:string)=>Promise<void>){
+ let id="";try{id=z.uuid().parse(form.get("id"));await work(id);}catch(e){redirect(`/documenti?error=${encodeURIComponent(publicError(e).message)}`);}
+ refreshDocuments();redirect(`/documenti/${id}?success=Operazione%20completata`);
 }
-
-export async function deleteDocumentAction(formData: FormData): Promise<void> {
-  const supabase = await createServerSupabaseClient();
-  const id = String(formData.get("id") ?? "");
-
-  if (!supabase || !id) {
-    redirect(`/documenti?error=${encodeURIComponent("Eliminazione non riuscita.")}`);
-  }
-
-  const { data: doc } = await supabase.from("documents").select("storage_path").eq("id", id).maybeSingle();
-
-  if (doc?.storage_path) {
-    await supabase.storage.from("simi-documents").remove([String(doc.storage_path)]);
-  }
-
-  const { error } = await supabase.from("documents").delete().eq("id", id);
-
-  if (error) {
-    redirect(`/documenti?error=${encodeURIComponent(`Eliminazione fallita: ${error.message}`)}`);
-  }
-
-  revalidatePath("/documenti");
-  redirect(`/documenti?success=${encodeURIComponent("Documento eliminato.")}`);
-}
+export async function updateDocumentAction(form:FormData){return mutateDocument(form,async id=>{const db=await authorizedClient("document.update");const payload=documentFormSchema.parse(Object.fromEntries(form));const r=await db.rpc("save_document_metadata",{doc:id,payload});checkDatabase(r.error,"Aggiornamento metadata");});}
+export async function deleteDocumentAction(form:FormData){return mutateDocument(form,async id=>{const db=await authorizedClient("document.delete");const r=await db.rpc("set_document_archive",{doc:id,archived:true});checkDatabase(r.error);});}
+export async function restoreDocumentAction(form:FormData){return mutateDocument(form,async id=>{const db=await authorizedClient("document.delete");const r=await db.rpc("set_document_archive",{doc:id,archived:false});checkDatabase(r.error);});}
+export async function linkDocumentAction(form:FormData){return mutateDocument(form,async id=>{const db=await authorizedClient("document.update");const r=await db.rpc("link_document_context",{doc:id,...documentContextSchema.parse(Object.fromEntries(form))});checkDatabase(r.error);});}
+export async function finalizeDocumentAction(form:FormData){return mutateDocument(form,async id=>{const db=await authorizedClient("document.upload"),version=z.uuid().parse(form.get("version"));const r=await db.from("document_versions").select("id").eq("id",version).eq("document_id",id).single();checkDatabase(r.error);const result=await db.rpc("finalize_document_version",{version,acknowledge_duplicate:form.get("acknowledge_duplicate")==="1"});checkDatabase(result.error,"Finalizzazione versione");});}

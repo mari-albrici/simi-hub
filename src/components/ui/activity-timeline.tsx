@@ -9,6 +9,7 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
   return (
     <div className="app-card p-3">
       <h2 className="h5 mb-3">Attività</h2>
+      {items.length === 0 && <p className="text-muted mb-0">Cronologia non ancora disponibile in questa scheda.</p>}
       <div className="position-relative">
         {items.map((item) => (
           <div key={`${item.time}-${item.title}`} className="d-flex gap-3 mb-3 position-relative">

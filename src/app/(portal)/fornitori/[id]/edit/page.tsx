@@ -1,3 +1,4 @@
+import { requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCompanyById } from "@/lib/data";
@@ -5,10 +6,11 @@ import { updateCompanyAction } from "@/lib/crud";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function EditSupplierPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("company.update");
   const { id } = await params;
   const supplier = await getCompanyById(id);
 
-  if (!supplier || supplier.company_type !== "supplier") {
+  if (!supplier || !["supplier", "both"].includes(supplier.company_type)) {
     notFound();
   }
 
@@ -27,7 +29,7 @@ export default async function EditSupplierPage({ params }: { params: Promise<{ i
 
         <form action={updateCompanyAction} className="row g-3">
           <input type="hidden" name="id" value={supplier.id} />
-          <input type="hidden" name="company_type" value="supplier" />
+          <input type="hidden" name="company_type" value={supplier.company_type} />
           <div className="col-md-6">
             <label className="form-label">Ragione sociale</label>
             <input name="business_name" className="form-control" defaultValue={supplier.business_name} required />
@@ -52,13 +54,14 @@ export default async function EditSupplierPage({ params }: { params: Promise<{ i
             <label className="form-label">Email</label>
             <input name="email" type="email" className="form-control" defaultValue={supplier.email ?? ""} />
           </div>
-          <div className="col-md-6">
-            <label className="form-label">Contatto</label>
-            <input name="contact_name" className="form-control" defaultValue={supplier.contact_name ?? ""} />
-          </div>
+
           <div className="col-12">
             <label className="form-label">Indirizzo</label>
             <input name="address" className="form-control" defaultValue={supplier.address ?? ""} />
+          </div>
+          <div className="col-12">
+            <label className="form-label">IBAN</label>
+            <input name="iban" className="form-control" defaultValue={supplier.iban ?? ""} />
           </div>
           <div className="col-md-12 d-flex align-items-end justify-content-end gap-2">
             <Link href={`/fornitori/${supplier.id}`} className="btn btn-outline-secondary">Annulla</Link>

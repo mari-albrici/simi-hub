@@ -1,63 +1,27 @@
-import { cookies } from "next/headers";
+import { cache } from "react";
 import { isAllowedCorporateEmail } from "@/lib/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { AppError, checkDatabase } from "@/lib/errors";
+import { DEFAULT_ROLES } from "@/lib/constants";
+import type { RoleName } from "@/types";
 
-export const DEMO_SESSION_COOKIE = "simi-demo-session";
-
-export type DemoSessionUser = {
-  email: string;
-  name: string;
-  role: string;
-};
-
-// Converte la parte locale di una email (es. "mario.rossi") in un nome leggibile ("Mario Rossi").
-export function formatDisplayName(localPart: string): string {
-  return localPart
-    .split(/[.\-_]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
+export type SessionUser = { id: string; email: string; name: string; role: RoleName };
+export function formatDisplayName(localPart: string) {
+  return localPart.split(/[.\-_]+/).filter(Boolean).map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join(" ");
 }
-
-export async function getSessionUser(): Promise<DemoSessionUser | null> {
-  const cookieStore = await cookies();
-  const demoValue = cookieStore.get(DEMO_SESSION_COOKIE)?.value;
-
-  if (demoValue) {
-    try {
-      const parsed = JSON.parse(demoValue) as DemoSessionUser;
-      if (parsed.email && isAllowedCorporateEmail(parsed.email)) return parsed;
-    } catch {
-      return null;
-    }
-  }
-
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const supabase = await createServerSupabaseClient();
-  if (!supabase) {
-    return null;
+  if (!supabase) throw new AppError("configuration", "Connessione Supabase non configurata.");
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    if (error.name === "AuthSessionMissingError" || error.status === 401 || error.status === 403) return null;
+    throw new AppError("authentication", "Impossibile verificare la sessione. Riprova.");
   }
-
-  const { data: userData, error } = await supabase.auth.getUser();
-  const email = userData.user?.email;
-
-  if (error || !email || !isAllowedCorporateEmail(email)) return null;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, first_name, last_name")
-    .eq("id", userData.user.id)
-    .maybeSingle();
-
-  return {
-    email,
-    name:
-      profile?.first_name && profile?.last_name
-        ? `${profile.first_name} ${profile.last_name}`
-        : profile?.first_name ?? userData.user.user_metadata?.full_name ?? formatDisplayName(email.split("@")[0]),
-    role: profile?.role ?? "viewer",
-  };
-}
-
-export async function isAuthenticated(): Promise<boolean> {
-  return Boolean((await getSessionUser())?.email);
-}
+  const user = data.user;
+  if (!user?.email || !isAllowedCorporateEmail(user.email)) return null;
+  const result = await supabase.from("profiles").select("role, active, first_name, last_name").eq("id", user.id).maybeSingle();
+  checkDatabase(result.error, "Lettura profilo");
+  if (!result.data?.active || !DEFAULT_ROLES.includes(result.data.role)) return null;
+  return { id: user.id, email: user.email, name: [result.data.first_name, result.data.last_name].filter(Boolean).join(" ") || formatDisplayName(user.email.split("@")[0]), role: result.data.role as RoleName };
+});
+export async function isAuthenticated() { return Boolean(await getSessionUser()); }

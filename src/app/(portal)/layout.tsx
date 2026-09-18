@@ -1,3 +1,4 @@
+import { logoutAction } from "@/app/login/actions";
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -61,7 +62,7 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
              <span className="input-group-text bg-white">
   <i className="bi bi-search"></i>
 </span>
-              <input className="form-control" type="search" placeholder="Cerca" aria-label="Cerca" />
+              <input className="form-control" type="search" placeholder="Ricerca globale non ancora disponibile" aria-label="Cerca" disabled />
             </div>
           </div>
 
@@ -70,11 +71,9 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
               {sessionUser.name}
             </button>
             <ul className="dropdown-menu dropdown-menu-end">
-              <li><a className="dropdown-item" href="#">Profilo</a></li>
-              <li><a className="dropdown-item" href="#">Impostazioni</a></li>
               <li><hr className="dropdown-divider" /></li>
               <li>
-                <form action="/logout" method="post">
+                <form action={logoutAction}>
                   <button className="dropdown-item text-start" type="submit">Logout</button>
                 </form>
               </li>

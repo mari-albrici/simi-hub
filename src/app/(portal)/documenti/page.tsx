@@ -1,62 +1,27 @@
-import { uploadDocumentAction } from "@/lib/upload";
-import { getDocuments } from "@/lib/data";
-import { SubmitButton } from "@/components/ui/submit-button";
+import Link from "next/link";
+import { getAccessScope,requirePagePermission } from "@/lib/permissions";
+import { searchDocuments,documentOptions } from "@/lib/documents";
 import { DocumentsTable } from "@/components/documents/documents-table";
-
-type DocumentiSearchParams = { error?: string };
-
-export default async function DocumentsPage({
-  searchParams,
-}: {
-  searchParams: Promise<DocumentiSearchParams>;
-}) {
-  const { error } = await searchParams;
-  const documents = await getDocuments();
-
-  return (
-    <><div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
-        <div>
-          <h1 className="h3 mb-1">Documenti</h1>
-          <p className="text-muted mb-0">Archivio documentale delle commesse e delle aziende.</p>
-        </div>
-      </div>
-
-      {error && <div className="alert alert-danger">{error}</div>}
-
-      <div className="app-card p-3 mb-4">
-        <h2 className="h5 mb-3">Carica documento</h2>
-        <form action={uploadDocumentAction} className="row g-3 align-items-end">
-          <div className="col-md-6">
-            <label className="form-label">File</label>
-            <input className="form-control" type="file" name="file" required />
-          </div>
-          <div className="col-md-3">
-            <SubmitButton>Carica</SubmitButton>
-          </div>
-        </form>
-      </div>
-
-      <div className="content-panel p-3 mb-4">
-        <div className="row g-2">
-          <div className="col-md-3"><input className="form-control" placeholder="Ricerca documento" /></div>
-          <div className="col-md-2"><select className="form-select"><option>Categoria</option></select></div>
-          <div className="col-md-2"><select className="form-select"><option>Commessa</option></select></div>
-          <div className="col-md-2"><select className="form-select"><option>Cliente</option></select></div>
-          <div className="col-md-2"><select className="form-select"><option>Stato</option></select></div>
-          <div className="col-md-1"><button className="btn btn-outline-secondary w-100">Filtra</button></div>
-        </div>
-      </div>
-
-      {documents.length === 0 ? (
-        <div className="app-card p-3">
-          <div className="empty-state">
-            <div className="h5">Nessun documento caricato</div>
-            <p className="mb-0">Inizia caricando i documenti della prima commessa o del team amministrativo.</p>
-          </div>
-        </div>
-      ) : (
-        <DocumentsTable documents={documents} />
-      )}
-    </>
-  );
+import { UploadDocumentTrigger } from "@/components/documents/upload-document-trigger";
+import { documentStatusLabels } from "@/lib/document-validation";
+export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
+ await requirePagePermission("document.read");const p=await searchParams,[result,o,access]=await Promise.all([searchDocuments(p),documentOptions(),getAccessScope("document")]);
+ const select=(name:string,label:string,rows:{id:string;label:string}[])=><div className="col-md-3" key={name}><label className="form-label small" htmlFor={name}>{label}</label><select className="form-select form-select-sm" id={name} name={name} defaultValue={p[name]||(name==="sort"?"created_at":"")}>{name!=="sort"&&<option value="">Tutti</option>}{rows.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></div>;
+ const href=(page:number)=>`/documenti?${new URLSearchParams({...Object.fromEntries(Object.entries(p).filter((e):e is [string,string]=>!!e[1])),page:String(page)})}`;
+ return <><div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3"><h1 className="h3">Documenti</h1>{access.canUpload&&<UploadDocumentTrigger/>}</div>{p.error&&<p role="alert" className="alert alert-danger">{p.error}</p>}
+ <form className="app-card p-3 mb-3"><div className="row g-2">
+ {[['q','Ricerca','search'],['country','Paese','text'],['from','Data documento dal','date'],['to','Al','date']].map(([name,label,type])=><div key={name} className="col-md-3"><label className="form-label small" htmlFor={name}>{label}</label><input id={name} name={name} type={type} className="form-control form-control-sm" defaultValue={p[name]}/></div>)}
+ {select("category","Categoria",o.categories.map(x=>({id:x.id,label:`${x.code} — ${x.name}`})))}
+ {select("entity","Società SIMI",o.entities.map(x=>({id:x.id,label:x.business_name})))}
+ {select("project","Commessa",o.projects.map(x=>({id:x.id,label:x.project_code})))}
+ {select("company","Controparte",o.companies.map(x=>({id:x.id,label:x.business_name})))}
+ {select("invoice","Fattura",o.invoices.map(x=>({id:x.id,label:x.invoice_number})))}
+ {select("status","Stato",Object.entries(documentStatusLabels).map(([id,label])=>({id,label})))}
+ {select("expiry","Scadenza",[{id:"none",label:"Senza scadenza"},{id:"overdue",label:"Scaduti"},{id:"30",label:"Entro 30 giorni"}])}
+ {select("sort","Ordina per",[{id:"created_at",label:"Caricamento"},{id:"document_date",label:"Data documento"},{id:"title",label:"Titolo"},{id:"expiry_date",label:"Scadenza"},{id:"reference",label:"Riferimento"}])}
+ <div className="col-md-3"><label className="form-label small" htmlFor="direction">Direzione</label><select id="direction" name="direction" className="form-select form-select-sm" defaultValue={result.filters.direction}><option value="desc">Decrescente</option><option value="asc">Crescente</option></select></div>
+ </div><button className="btn btn-dark btn-sm mt-3">Applica filtri</button> <Link className="btn btn-outline-secondary btn-sm mt-3" href="/documenti">Azzera</Link></form>
+ {!access.canUpload&&<p className="small text-muted">Il tuo ruolo consente la consultazione dei documenti, non il caricamento.</p>}
+ {!result.count&&<div className="app-card p-3 mb-3"><p>Nessun documento presente per i filtri selezionati.</p>{access.canUpload&&<UploadDocumentTrigger/>}</div>}
+ <p className="small text-muted">{result.count} documenti</p><DocumentsTable documents={result.rows}/><nav className="d-flex gap-3">{result.filters.page>1&&<Link href={href(result.filters.page-1)}>Precedente</Link>}<span>Pagina {result.filters.page}</span>{result.filters.page*50<result.count&&<Link href={href(result.filters.page+1)}>Successiva</Link>}</nav></>;
 }

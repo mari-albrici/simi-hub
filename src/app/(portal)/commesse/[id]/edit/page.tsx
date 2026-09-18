@@ -1,3 +1,5 @@
+import { getCompaniesByType, getProfileDirectory, getLegalEntities } from "@/lib/data";
+import { requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProjectById } from "@/lib/data";
@@ -5,6 +7,8 @@ import { updateProjectAction } from "@/lib/crud";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("project.update");
+  const [customers, managers, entities] = await Promise.all([getCompaniesByType("customer"), getProfileDirectory(), getLegalEntities()]);
   const { id } = await params;
   const project = await getProjectById(id);
 
@@ -37,19 +41,20 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
           </div>
           <div className="col-md-6">
             <label className="form-label">Cliente</label>
-            <input name="customer_name" className="form-control" defaultValue={project.customer_name ?? ""} />
+            <select name="customer_id" className="form-select" defaultValue={project.customer_id ?? ""}><option value="">Non assegnato</option>{customers.map(item => <option key={item.id} value={item.id}>{item.business_name}</option>)}</select>
           </div>
           <div className="col-md-6">
             <label className="form-label">Responsabile</label>
-            <input name="project_manager_name" className="form-control" defaultValue={project.project_manager_name ?? ""} />
+            <select name="project_manager_id" className="form-select" defaultValue={project.project_manager_id ?? ""}><option value="">Non assegnato</option>{managers.map(item => <option key={item.id} value={item.id}>{[item.first_name,item.last_name].filter(Boolean).join(" ")}</option>)}</select>
           </div>
+          <div className="col-md-12"><label className="form-label">Società SIMI</label><select name="legal_entity_id" className="form-select" defaultValue={project.legal_entity_id ?? ""}><option value="">Da assegnare</option>{entities.map(item => <option key={item.id} value={item.id}>{item.business_name}</option>)}</select></div>
           <div className="col-md-4">
             <label className="form-label">Paese</label>
             <input name="country" className="form-control" defaultValue={project.country ?? "Italia"} />
           </div>
           <div className="col-md-4">
             <label className="form-label">Città</label>
-            <input name="city" className="form-control" defaultValue={project.city ?? "Milano"} />
+            <input name="city" className="form-control" defaultValue={project.city ?? ""} />
           </div>
           <div className="col-md-4">
             <label className="form-label">Stato</label>

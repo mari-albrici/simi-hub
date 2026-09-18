@@ -1,6 +1,6 @@
+import { requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { getDashboardData } from "@/lib/dashboard";
-import { getSessionUser } from "@/lib/session";
 import { formatCurrencyEUR } from "@/lib/dashboard-helpers";
 import { DashboardKpiCard } from "@/components/dashboard/kpi-card";
 import { AttentionList } from "@/components/dashboard/attention-list";
@@ -10,10 +10,12 @@ import { CashFlowChart } from "@/components/dashboard/cash-flow-chart";
 import { ProjectsAttentionList } from "@/components/dashboard/projects-attention-list";
 import { DashboardEmptyState } from "@/components/dashboard/dashboard-empty-state";
 
+function kpiValue(kpi:{amount:number;currencies?:Record<string,number>}){const values=Object.entries(kpi.currencies??{});return values.length?values.map(([currency,amount])=>new Intl.NumberFormat("it-IT",{style:"currency",currency}).format(amount)).join(" · "):formatCurrencyEUR(0);}
 export default async function DashboardPage() {
-  const [data, sessionUser] = await Promise.all([getDashboardData(), getSessionUser()]);
+  await requirePagePermission("dashboard.read");
+  const data = await getDashboardData();
   const today = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const firstName = sessionUser?.name?.split(" ")[0];
+
 
   return (
     <>
@@ -38,37 +40,37 @@ export default async function DashboardPage() {
         <div className="col-md-6 col-xl-4 col-xxl-2">
           <DashboardKpiCard
             label="Da pagare"
-            value={formatCurrencyEUR(data.kpis.payable.amount)}
-            sublabel={`${data.kpis.payable.count} fatture`}
+            value={kpiValue(data.kpis.payable)}
+            sublabel={`${data.kpis.payable.count} scadenze`}
             tone="primary"
-            href="/fatture?type=purchase&status=open"
+            href="/scadenze?kind=payment&status=open"
           />
         </div>
         <div className="col-md-6 col-xl-4 col-xxl-2">
           <DashboardKpiCard
             label="Da incassare"
-            value={formatCurrencyEUR(data.kpis.receivable.amount)}
-            sublabel={`${data.kpis.receivable.count} fatture`}
+            value={kpiValue(data.kpis.receivable)}
+            sublabel={`${data.kpis.receivable.count} scadenze`}
             tone="primary"
-            href="/fatture?type=sale&status=open"
+            href="/scadenze?kind=receipt&status=open"
           />
         </div>
         <div className="col-md-6 col-xl-4 col-xxl-2">
           <DashboardKpiCard
             label="Scaduto fornitori"
-            value={formatCurrencyEUR(data.kpis.payableOverdue.amount)}
-            sublabel={`${data.kpis.payableOverdue.count} fatture`}
+            value={kpiValue(data.kpis.payableOverdue)}
+            sublabel={`${data.kpis.payableOverdue.count} scadenze`}
             tone={data.kpis.payableOverdue.count > 0 ? "danger" : "secondary"}
-            href="/fatture?type=purchase&status=overdue"
+            href="/scadenze?kind=payment&status=overdue"
           />
         </div>
         <div className="col-md-6 col-xl-4 col-xxl-2">
           <DashboardKpiCard
             label="Scaduto clienti"
-            value={formatCurrencyEUR(data.kpis.receivableOverdue.amount)}
-            sublabel={`${data.kpis.receivableOverdue.count} fatture`}
+            value={kpiValue(data.kpis.receivableOverdue)}
+            sublabel={`${data.kpis.receivableOverdue.count} scadenze`}
             tone={data.kpis.receivableOverdue.count > 0 ? "danger" : "secondary"}
-            href="/fatture?type=sale&status=overdue"
+            href="/scadenze?kind=receipt&status=overdue"
           />
         </div>
         <div className="col-md-6 col-xl-4 col-xxl-2">
@@ -76,7 +78,7 @@ export default async function DashboardPage() {
             label="Scadenze prossimi 7 giorni"
             value={String(data.kpis.deadlinesNext7)}
             tone={data.kpis.deadlinesNext7 > 0 ? "warning" : "secondary"}
-            href="/scadenze"
+            href="/scadenze?period=7"
           />
         </div>
         <div className="col-md-6 col-xl-4 col-xxl-2">

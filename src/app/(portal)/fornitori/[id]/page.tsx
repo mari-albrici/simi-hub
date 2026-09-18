@@ -1,12 +1,16 @@
+import { ContextDocuments } from "@/components/documents/context-documents";
+import { getAccessScope, requirePagePermission } from "@/lib/permissions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCompanyById } from "@/lib/data";
 
 export default async function SupplierDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("company.read");
+  const access = await getAccessScope("company");
   const { id } = await params;
   const supplier = await getCompanyById(id);
 
-  if (!supplier || supplier.company_type !== "supplier") {
+  if (!supplier || !["supplier", "both"].includes(supplier.company_type)) {
     notFound();
   }
 
@@ -30,7 +34,7 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
             <span>Attivo: {supplier.active ? "Sì" : "No"}</span>
           </div>
         </div>
-        <button className="btn btn-dark">Modifica</button>
+        {access.canUpdate && <Link href={`/fornitori/${supplier.id}/edit`} className="btn btn-dark">Modifica</Link>}
       </div>
 
       <div className="row g-4">
@@ -42,23 +46,14 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
               <div className="col-md-6"><strong>Email:</strong> {supplier.email ?? "-"}</div>
               <div className="col-md-6"><strong>Telefono:</strong> {supplier.phone ?? "-"}</div>
               <div className="col-md-6"><strong>Indirizzo:</strong> {supplier.address ?? "-"}{supplier.city ? `, ${supplier.city}` : ""}</div>
-              <div className="col-md-6"><strong>Contatto:</strong> {supplier.contact_name ?? "-"}</div>
+
               <div className="col-md-6"><strong>Paese:</strong> {supplier.country ?? "-"}</div>
             </div>
           </div>
         </div>
 
-        <div className="col-lg-4">
-          <div className="app-card p-3">
-            <h2 className="h5 mb-3">Quick actions</h2>
-            <div className="d-grid gap-2">
-              <button className="btn btn-outline-dark btn-sm" type="button">Apri ordini</button>
-              <button className="btn btn-outline-dark btn-sm" type="button">Visualizza fatture</button>
-              <button className="btn btn-outline-dark btn-sm" type="button">Contatta fornitore</button>
-            </div>
-          </div>
-        </div>
+
       </div>
-    </>
+    <ContextDocuments company={supplier.id}/></>
   );
 }

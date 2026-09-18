@@ -1,6 +1,8 @@
+import { requirePagePermission } from "@/lib/permissions";
 import { getEmployees } from "@/lib/data";
 
 export default async function PersonnelPage() {
+  await requirePagePermission("employee.read");
   const employees = await getEmployees();
 
   return (
@@ -10,14 +12,14 @@ export default async function PersonnelPage() {
           <h1 className="h3 mb-1">Personale</h1>
           <p className="text-muted mb-0">Anagrafica dipendenti e referenti aziendali.</p>
         </div>
-        <button className="btn btn-dark">+ Nuovo dipendente</button>
+        <button className="btn btn-dark" disabled>Nuovo dipendente — non disponibile</button>
       </div>
 
       <div className="app-card p-3">
         {employees.length === 0 ? (
           <div className="empty-state">
             <div className="h5">Nessun dipendente registrato</div>
-            <p className="mb-0">Aggiungi l'anagrafica del personale per iniziare.</p>
+            <p className="mb-0">Aggiungi l’anagrafica del personale per iniziare.</p>
           </div>
         ) : (
           <table className="table align-middle mb-0">

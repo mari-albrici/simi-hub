@@ -2,7 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { loginAction } from "@/app/login/actions";
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
   return (
     <div className="login-shell">
       <div className="login-card">
@@ -22,22 +23,20 @@ export default function LoginPage() {
               <p className="text-muted mb-0">Accesso portale amministrativo</p>
             </div>
 
+            {error && <div className="alert alert-danger" role="alert">{error}</div>}
             <form action={loginAction}>
               <div className="mb-3">
                 <label htmlFor="email" className="form-label">Email aziendale</label>
-                <input id="email" name="email" type="email" className="form-control" defaultValue="admin@simisrl.eu" required />
+                <input id="email" name="email" type="email" className="form-control" autoComplete="username" required />
               </div>
 
               <div className="mb-3">
                 <label htmlFor="password" className="form-label">Password</label>
-                <input id="password" name="password" type="password" className="form-control" defaultValue="password123" required minLength={8} />
+                <input id="password" name="password" type="password" className="form-control" autoComplete="current-password" required minLength={8} />
               </div>
 
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <div className="form-check">
-                  <input className="form-check-input" type="checkbox" id="remember" />
-                  <label className="form-check-label" htmlFor="remember">Ricordami</label>
-                </div>
+
                 <Link href="/reset-password" className="small text-decoration-none">Password dimenticata?</Link>
               </div>
 

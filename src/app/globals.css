@@ -234,6 +234,11 @@ a:hover .kpi-card {
 .table td:nth-child(n+1) { max-width: 28rem; }
 .filter-toolbar { background: var(--simi-surface-secondary); border: 1px solid var(--simi-border); border-radius: var(--simi-radius-md); padding: 0.8rem 1rem; }
 .filter-toolbar .form-label { margin-bottom: 0.25rem; }
+.row-actions { position: relative; display: inline-block; }
+.row-actions summary { list-style: none; cursor: pointer; width: 2.1rem; padding: 0.3rem; }
+.row-actions summary::-webkit-details-marker { display: none; }
+.row-actions-menu { position: absolute; z-index: 20; right: 0; top: calc(100% + 0.25rem); min-width: 9rem; padding: 0.35rem; background: var(--simi-surface); border: 1px solid var(--simi-border); border-radius: var(--simi-radius-sm); box-shadow: 0 0.35rem 1rem rgba(15,23,42,.12); }
+.row-actions-menu .dropdown-item { display: block; width: 100%; padding: 0.4rem 0.55rem; border-radius: var(--simi-radius-sm); white-space: nowrap; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; white-space: nowrap; }
 .page-loading { min-height: 40vh; display: grid; place-items: center; }
 .sidebar .nav-link { padding: 0.55rem 0.75rem; font-size: 0.92rem; }

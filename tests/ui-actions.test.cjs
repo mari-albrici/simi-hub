@@ -55,6 +55,15 @@ test('administrative density uses Italian formatters and compact table patterns'
  assert.match(docs,/filter-toolbar/);assert.doesNotMatch(layout,/Ricerca globale non ancora disponibile/);
  assert.match(css,/white-space: nowrap/);assert.match(css,/text-overflow: ellipsis/);assert.match(css,/col-money/);
 });
+
+test('operational lists use compact row actions',()=>{
+ const menu=read('src/components/ui/row-actions-menu.tsx');
+ const orders=read('src/app/(portal)/ordini/page.tsx');
+ const ddt=read('src/app/(portal)/ddt/page.tsx');
+ assert.match(menu,/three-dots-vertical/);assert.match(menu,/aria-label/);
+ assert.match(orders,/RowActionsMenu/);assert.match(orders,/Avanzamento/);assert.doesNotMatch(orders,/Ordinato<\/th>/);
+ assert.match(ddt,/RowActionsMenu/);assert.match(ddt,/Controparte/);
+});
 test('loading and server error feedback are wired',()=>{
  const upload=read('src/components/documents/upload-document-form.tsx');
  const invoice=read('src/components/ui/submit-button.tsx');

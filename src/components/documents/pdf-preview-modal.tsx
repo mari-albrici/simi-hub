@@ -21,15 +21,12 @@ export function PdfPreviewModal({ versionId, filename, label = "Visualizza PDF" 
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
     document.addEventListener("keydown", onKeyDown);
-    setLoading(true);
-    setError(false);
-    setAttempt((value) => value + 1);
     closeButton.current?.focus();
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
   return <>
-    <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setOpen(true)}>
+    <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => { setLoading(true); setError(false); setAttempt((value) => value + 1); setOpen(true); }}>
       <i className="bi bi-file-earmark-pdf me-1" aria-hidden="true" />{label}
     </button>
     {open && <div className="modal d-block pdf-preview-modal" role="dialog" aria-modal="true" aria-labelledby="pdf-preview-title">

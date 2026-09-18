@@ -3,7 +3,7 @@ import { requirePagePermission } from "@/lib/permissions";
 import { hasPermission } from "@/lib/auth";
 import { getDeadlines,deadlineOptions,deadlineHref,type Deadline } from "@/lib/deadlines";
 import { temporalLabels,priorityLabels } from "@/lib/deadline-validation";
-import { formatDate,formatMoney } from "@/lib/formatters";
+import { formatMoney } from "@/lib/formatters";
 const money=(n:number|null,c:string|null)=>formatMoney(n,c||"EUR");
 export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
  const user=await requirePagePermission("deadline.read"),p=await searchParams;

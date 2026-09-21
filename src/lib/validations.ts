@@ -44,11 +44,40 @@ export const companyFormSchema = z.object({
   }, "IBAN non valido"),
 });
 export const projectFormSchema = z.object({
-  project_code: z.string().trim().min(3).max(80), name: z.string().trim().min(2).max(250),
-  description: optionalText, notes: optionalText, customer_id: nullableUuid, customer_contact_id: nullableUuid,
-  project_manager_id: nullableUuid, legal_entity_id: nullableUuid,
-  country: optionalText, city: optionalText, status: projectStatusSchema, opening_date: optionalDate,
-  planned_start_date: optionalDate, actual_start_date: optionalDate, expected_closing_date: optionalDate, closing_date: optionalDate,
+  project_code: z
+    .string()
+    .trim()
+    .min(3)
+    .max(80),
+
+  name: z
+    .string()
+    .trim()
+    .min(2)
+    .max(250),
+
+  description: optionalText,
+  notes: optionalText,
+
+  customer_id: nullableUuid,
+  customer_contact_id: nullableUuid,
+  project_manager_id: nullableUuid,
+  legal_entity_id: nullableUuid,
+
+  country: optionalText,
+  city: optionalText,
+
+  // Dati P.A.
+  cig: optionalText,
+  cup: optionalText,
+
+  status: projectStatusSchema,
+
+  opening_date: optionalDate,
+  planned_start_date: optionalDate,
+  actual_start_date: optionalDate,
+  expected_closing_date: optionalDate,
+  closing_date: optionalDate,
 });
 export const invoiceSchema = z.object({
   id: uuidSchema.optional(), expected_updated_at: z.iso.datetime({ offset: true }).optional(), document_id: nullableUuid,

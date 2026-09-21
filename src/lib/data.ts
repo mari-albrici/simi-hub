@@ -47,33 +47,253 @@ export async function getProfileDirectory(): Promise<Array<{ id: string; first_n
   const db = await authorizedClient("profile.directory"); const result = await db.rpc("profile_directory");
   checkDatabase(result.error); return result.data ?? [];
 }
-export type ProjectFilter = { q?: string; legal_entity_id?: string; country?: string; customer_id?: string; project_manager_id?: string; status?: string; date_from?: string; date_to?: string; page?: number; pageSize?: number; archived?: boolean };
-function projectRecord(row: Record<string, unknown>, names: Map<string, string>) {
-  return { id: String(row.id), project_code: String(row.project_code), name: String(row.name),
-    customer_id: stringOrNull(row.customer_id), customer_contact_id: stringOrNull(row.customer_contact_id), project_manager_id: stringOrNull(row.project_manager_id), legal_entity_id: stringOrNull(row.legal_entity_id),
-    customer_name: (row.customer as { business_name?: string } | null)?.business_name,
-    project_manager_name: names.get(String(row.project_manager_id)), country: stringOrNull(row.country) ?? undefined,
-    city: stringOrNull(row.city) ?? undefined, status: row.status as ProjectStatus, opening_date: stringOrNull(row.opening_date) ?? undefined,
-    planned_start_date: stringOrNull(row.planned_start_date), actual_start_date: stringOrNull(row.actual_start_date), expected_closing_date: stringOrNull(row.expected_closing_date), closing_date: stringOrNull(row.closing_date),
-    description: stringOrNull(row.description), notes: stringOrNull(row.notes), address: stringOrNull(row.address),
-    archived_at: stringOrNull(row.archived_at),
-    entity_name: (row.entity as { business_name?: string } | null)?.business_name,
+export type ProjectFilter = { q?: string; legal_entity_id?: string; country?: string; customer_id?: string; project_manager_id?: string; status?: string; date_from?: string; date_to?: string; page?: number; pageSize?: number; archived?: boolean;sort?: "project_code" | "customer" | "status";
+direction?: "asc" | "desc"; };
+function projectRecord(
+  row: Record<string, unknown>,
+  names: Map<string, string>,
+) {
+  return {
+    id: String(row.id),
+
+    project_code: String(row.project_code),
+    name: String(row.name),
+
+    customer_id: stringOrNull(row.customer_id),
+    customer_contact_id: stringOrNull(row.customer_contact_id),
+    project_manager_id: stringOrNull(row.project_manager_id),
+    legal_entity_id: stringOrNull(row.legal_entity_id),
+
+    customer_name: (
+      row.customer as { business_name?: string } | null
+    )?.business_name,
+
+    project_manager_name: names.get(
+      String(row.project_manager_id),
+    ),
+
+    country:
+      stringOrNull(row.country) ?? undefined,
+
+    city:
+      stringOrNull(row.city) ?? undefined,
+
+    // Dati P.A.
+    cig: stringOrNull(row.cig),
+    cup: stringOrNull(row.cup),
+
+    status: row.status as ProjectStatus,
+
+    opening_date:
+      stringOrNull(row.opening_date) ?? undefined,
+
+    planned_start_date:
+      stringOrNull(row.planned_start_date),
+
+    actual_start_date:
+      stringOrNull(row.actual_start_date),
+
+    expected_closing_date:
+      stringOrNull(row.expected_closing_date),
+
+    closing_date:
+      stringOrNull(row.closing_date),
+
+    description:
+      stringOrNull(row.description),
+
+    notes:
+      stringOrNull(row.notes),
+
+    address:
+      stringOrNull(row.address),
+
+    archived_at:
+      stringOrNull(row.archived_at),
+
+    entity_name: (
+      row.entity as { business_name?: string } | null
+    )?.business_name,
   };
 }
 export async function searchProjects(filter: ProjectFilter = {}) {
   const db = await authorizedClient("project.read");
+
   const [rows, profiles] = await Promise.all([
-    (async () => { let q = db.from("projects").select("*, customer:companies!projects_customer_fk(business_name), entity:legal_entities(business_name)",{count:"exact"}); q=filter.archived?q.not("archived_at","is",null):q.is("archived_at",null);
-      if (filter.q) { const safe=filter.q.replace(/[%_\\]/g,"\\$&"); const matched=await db.from("companies").select("id").ilike("business_name",`%${safe}%`); checkDatabase(matched.error,"Ricerca cliente commessa"); const ids=(matched.data??[]).map(x=>String(x.id)); const clauses=[`project_code.ilike.%${safe}%`,`name.ilike.%${safe}%`,`city.ilike.%${safe}%`]; if(ids.length)clauses.push(`customer_id.in.(${ids.join(",")})`); q=q.or(clauses.join(",")); }
-      if (filter.legal_entity_id) q=q.eq("legal_entity_id",filter.legal_entity_id); if (filter.country) q=q.ilike("country",`%${filter.country}%`);
-      if (filter.customer_id) q=q.eq("customer_id",filter.customer_id); if (filter.project_manager_id) q=q.eq("project_manager_id",filter.project_manager_id); if (filter.status) q=q.eq("status",filter.status);
-      if (filter.date_from) q=q.gte("opening_date",filter.date_from); if (filter.date_to) q=q.lte("opening_date",filter.date_to);
-      const page=Math.max(1,filter.page??1), size=Math.min(100,Math.max(1,filter.pageSize??50)); const r=await q.order("project_code").range((page-1)*size,page*size-1); checkDatabase(r.error,"Ricerca commesse"); return r;
+    (async () => {
+      let q = db
+        .from("projects")
+        .select(
+          `
+            *,
+            customer:companies!projects_customer_fk(business_name),
+            entity:legal_entities(business_name)
+          `,
+          { count: "exact" },
+        );
+
+      // Archiviate / attive
+      q = filter.archived
+        ? q.not("archived_at", "is", null)
+        : q.is("archived_at", null);
+
+      // Ricerca libera
+      if (filter.q) {
+        const safe = filter.q.replace(/[%_\\]/g, "\\$&");
+
+        const matched = await db
+          .from("companies")
+          .select("id")
+          .ilike("business_name", `%${safe}%`);
+
+        checkDatabase(
+          matched.error,
+          "Ricerca cliente commessa",
+        );
+
+        const ids = (matched.data ?? []).map((x) =>
+          String(x.id),
+        );
+
+        const clauses = [
+          `project_code.ilike.%${safe}%`,
+          `name.ilike.%${safe}%`,
+          `city.ilike.%${safe}%`,
+        ];
+
+        if (ids.length) {
+          clauses.push(
+            `customer_id.in.(${ids.join(",")})`,
+          );
+        }
+
+        q = q.or(clauses.join(","));
+      }
+
+      // Filtri
+      if (filter.legal_entity_id) {
+        q = q.eq(
+          "legal_entity_id",
+          filter.legal_entity_id,
+        );
+      }
+
+      if (filter.country) {
+        q = q.ilike(
+          "country",
+          `%${filter.country}%`,
+        );
+      }
+
+      if (filter.customer_id) {
+        q = q.eq(
+          "customer_id",
+          filter.customer_id,
+        );
+      }
+
+      if (filter.project_manager_id) {
+        q = q.eq(
+          "project_manager_id",
+          filter.project_manager_id,
+        );
+      }
+
+      if (filter.status) {
+        q = q.eq(
+          "status",
+          filter.status,
+        );
+      }
+
+      if (filter.date_from) {
+        q = q.gte(
+          "opening_date",
+          filter.date_from,
+        );
+      }
+
+      if (filter.date_to) {
+        q = q.lte(
+          "opening_date",
+          filter.date_to,
+        );
+      }
+
+      // Ordinamento
+      const ascending =
+        filter.direction !== "desc";
+
+      switch (filter.sort) {
+        case "customer":
+          q = q.order("business_name", {
+            ascending,
+            referencedTable: "companies",
+          });
+          break;
+
+        case "status":
+          q = q.order("status", {
+            ascending,
+          });
+          break;
+
+        case "project_code":
+        default:
+          q = q.order("project_code", {
+            ascending,
+          });
+          break;
+      }
+
+      // Paginazione
+      const page = Math.max(
+        1,
+        filter.page ?? 1,
+      );
+
+      const size = Math.min(
+        100,
+        Math.max(
+          1,
+          filter.pageSize ?? 50,
+        ),
+      );
+
+      const r = await q.range(
+        (page - 1) * size,
+        page * size - 1,
+      );
+
+      checkDatabase(
+        r.error,
+        "Ricerca commesse",
+      );
+
+      return r;
     })(),
+
     getProfileDirectory(),
   ]);
-  const names = new Map(profiles.map(p => [p.id,[p.first_name,p.last_name].filter(Boolean).join(" ")]));
-  return { rows: (rows.data ?? []).map(row => projectRecord(row as Record<string, unknown>, names)), count: rows.count ?? 0 };
+
+  const names = new Map(
+    profiles.map((p) => [
+      p.id,
+      [p.first_name, p.last_name]
+        .filter(Boolean)
+        .join(" "),
+    ]),
+  );
+
+  return {
+    rows: (rows.data ?? []).map((row) =>
+      projectRecord(
+        row as Record<string, unknown>,
+        names,
+      ),
+    ),
+    count: rows.count ?? 0,
+  };
 }
 export async function getProjects() {
   return (await searchProjects({page:1,pageSize:500})).rows;

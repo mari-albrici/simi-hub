@@ -23,16 +23,33 @@ export type DashboardKpis = {
   deadlinesNext7: number;
 };
 
+export type ProjectStatusPoint = {
+  status: "ACTIVE" | "DRAFT";
+  label: string;
+  count: number;
+};
+
+export type FinancialBalancePoint = {
+  label: string;
+  balance: number;
+};
+
 export type DashboardData = {
-  // false quando Supabase non è configurato: la UI mostra lo stato vuoto invece dei dati.
   configured: boolean;
-  // true quando una o più query hanno fallito: la UI mostra un avviso senza stack trace.
   error: boolean;
+
   kpis: DashboardKpis;
+
   upcomingDeadlines: DeadlineListItem[];
+
   supplierSummary: FinancialBucket;
   customerSummary: FinancialBucket;
+
   cashFlow: CashFlowPoint[];
+  financialBalance: FinancialBalancePoint[];
+
+  projectStatus: ProjectStatusPoint[];
+
   projectsAttention: ProjectAttention[];
 };
 
@@ -97,7 +114,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       getInvoices(),
       readAll((a,b) => supabase.from("deadlines").select("id,title,description,due_date,status,priority,project_id,company_id,invoice_id").eq("status","open").is("archived_at",null).is("invoice_id",null).order("id").range(a,b)),
       readAll((a,b) => supabase.from("documents").select("id,title,category_id,expiry_date,status,project_id").is("archived_at",null).eq("file_state","ready").order("id").range(a,b)),
-      readAll((a,b) => supabase.from("projects").select("id,project_code,name,customer_id").is("archived_at",null).order("id").range(a,b)),
+      readAll((a,b) => supabase.from("projects").select("id,project_code,name,customer_id,status").is("archived_at",null).order("id").range(a,b)),
       readAll((a,b) => supabase.from("companies").select("id,business_name").is("archived_at",null).order("id").range(a,b)),
     ]);
 
@@ -185,6 +202,25 @@ export async function getDashboardData(): Promise<DashboardData> {
       return {amount:currencies.EUR??0,count,currencies};
     };
 
+    // --- Stato commesse ---
+
+const projectStatus: ProjectStatusPoint[] = [
+  {
+    status: "ACTIVE",
+    label: "Attive",
+    count: (projectData ?? []).filter(
+      (project) => project.status === "ACTIVE"
+    ).length,
+  },
+  {
+    status: "DRAFT",
+    label: "Bozze",
+    count: (projectData ?? []).filter(
+      (project) => project.status === "DRAFT"
+    ).length,
+  },
+];
+
     // --- Flusso di cassa previsto (90 giorni) ---
     const bucketRange = (fromInclusive: string, toInclusive: string) => {
       const predicate = (row: InvoiceRow) => Boolean(row.due_date && row.due_date >= fromInclusive && row.due_date <= toInclusive);
@@ -197,6 +233,14 @@ export async function getDashboardData(): Promise<DashboardData> {
       { label: "31-60 gg", ...bucketRange(in31, in60) },
       { label: "61-90 gg", ...bucketRange(in61, in90) },
     ];
+
+    // --- Saldo finanziario previsto ---
+
+const financialBalance: FinancialBalancePoint[] =
+  cashFlow.map((point) => ({
+    label: point.label,
+    balance: point.inflow - point.outflow,
+  }));
 
     // --- Commesse che richiedono attenzione ---
     const projectReasons = new Map<string, Set<string>>();
@@ -229,20 +273,37 @@ export async function getDashboardData(): Promise<DashboardData> {
       })
       .sort((a, b) => b.reasons.length - a.reasons.length);
 
-    return {
-      configured: true,
-      error: false,
-      kpis: {
-        payable: financialKpi("payment"),
-        receivable: financialKpi("receipt"),
-        payableOverdue: financialKpi("payment",true),
-        receivableOverdue: financialKpi("receipt",true),
-        deadlinesNext7,
-      },
-      upcomingDeadlines,
-      supplierSummary: bucketize(purchaseOpen, today, in7, in30),
-      customerSummary: bucketize(saleOpen, today, in7, in30),
-      cashFlow,
-      projectsAttention,
-    };
+return {
+  configured: true,
+  error: false,
+
+  kpis: {
+    payable: financialKpi("payment"),
+    receivable: financialKpi("receipt"),
+    payableOverdue: financialKpi("payment", true),
+    receivableOverdue: financialKpi("receipt", true),
+    deadlinesNext7,
+  },
+
+  upcomingDeadlines,
+
+  supplierSummary: bucketize(
+    purchaseOpen,
+    today,
+    in7,
+    in30
+  ),
+
+  customerSummary: bucketize(
+    saleOpen,
+    today,
+    in7,
+    in30
+  ),
+
+  cashFlow,
+  financialBalance,
+  projectStatus,
+  projectsAttention,
+};
 }

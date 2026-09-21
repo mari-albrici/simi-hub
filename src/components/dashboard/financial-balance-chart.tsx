@@ -1,39 +1,38 @@
 "use client";
 
-import type { CashFlowPoint } from "@/types";
-import { formatCurrencyEUR } from "@/lib/dashboard-helpers";
-import { DashboardEmptyState } from "./dashboard-empty-state";
-
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
+  Cell,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 
-export function CashFlowChart({
+import type { FinancialBalancePoint } from "@/lib/dashboard";
+import { formatCurrencyEUR } from "@/lib/dashboard-helpers";
+import { DashboardEmptyState } from "./dashboard-empty-state";
+
+export function FinancialBalanceChart({
   data,
 }: {
-  data: CashFlowPoint[];
+  data: FinancialBalancePoint[];
 }) {
   const hasValues = data.some(
-    (point) =>
-      point.inflow !== 0 ||
-      point.outflow !== 0
+    (point) => point.balance !== 0
   );
 
   if (!hasValues) {
     return (
-      <DashboardEmptyState message="Nessun incasso o pagamento previsto nei prossimi 90 giorni." />
+      <DashboardEmptyState message="Nessun saldo finanziario previsto nei prossimi 90 giorni." />
     );
   }
 
   return (
-    <div style={{ width: "100%", height: 300 }}>
+    <div style={{ width: "100%", height: 280 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
@@ -43,7 +42,6 @@ export function CashFlowChart({
             left: 0,
             bottom: 0,
           }}
-          barGap={6}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -71,32 +69,35 @@ export function CashFlowChart({
             }
           />
 
+          <ReferenceLine
+            y={0}
+            stroke="var(--bs-border-color)"
+          />
+
           <Tooltip
-            formatter={(value) =>
-              formatCurrencyEUR(Number(value))
-            }
-          />
-
-          <Legend
-            iconType="circle"
-            iconSize={8}
+            formatter={(value) => [
+              formatCurrencyEUR(Number(value)),
+              "Saldo previsto",
+            ]}
           />
 
           <Bar
-            dataKey="inflow"
-            name="Entrate previste"
-            fill="var(--simi-success)"
+            dataKey="balance"
+            name="Saldo previsto"
             radius={[5, 5, 0, 0]}
-            maxBarSize={42}
-          />
-
-          <Bar
-            dataKey="outflow"
-            name="Uscite previste"
-            fill="var(--simi-danger)"
-            radius={[5, 5, 0, 0]}
-            maxBarSize={42}
-          />
+            maxBarSize={52}
+          >
+            {data.map((entry) => (
+              <Cell
+                key={entry.label}
+                fill={
+                  entry.balance >= 0
+                    ? "var(--simi-success)"
+                    : "var(--simi-danger)"
+                }
+              />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>

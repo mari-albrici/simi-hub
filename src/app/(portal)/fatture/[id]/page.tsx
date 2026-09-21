@@ -4,7 +4,7 @@ import { FileLink } from "@/components/documents/file-link";
 import { formatDate, formatMoney } from "@/lib/formatters";
 import { InvoiceCycle } from "@/components/commercial/invoice-cycle";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { searchDocuments } from "@/lib/documents";
+import { getInvoiceDocuments } from "@/lib/documents";
 import Link from "@/components/ui/app-link";
 import { notFound } from "next/navigation";
 import {
@@ -31,17 +31,17 @@ export default async function InvoiceDetailPage({
 
   const invoice = await getInvoiceById((await params).id);
 
-  if (!invoice) notFound();
+  if (!invoice) {
+    notFound();
+  }
 
   const [
-    { rows: invoiceDocuments },
+    invoiceDocuments,
     installmentBalances,
     access,
     financialSummaries,
   ] = await Promise.all([
-    searchDocuments({
-      invoice: invoice.id,
-    }),
+    getInvoiceDocuments(invoice.id),
     getInstallmentBalances(invoice.id),
     getAccessScope("invoice"),
     getInvoiceFinancialSummaries([invoice.id]),
@@ -192,7 +192,7 @@ export default async function InvoiceDetailPage({
             )}
           </div>
 
-          {invoiceDocuments.length ? (
+          {invoiceDocuments.length > 0 ? (
             <div className="d-flex flex-column gap-2">
               {invoiceDocuments.map((document) => (
                 <div
@@ -319,11 +319,15 @@ export default async function InvoiceDetailPage({
             />
 
             <div className="col-md-3">
-              <label className="form-label">
+              <label
+                className="form-label"
+                htmlFor="amount"
+              >
                 Importo
               </label>
 
               <input
+                id="amount"
                 name="amount"
                 type="number"
                 step="0.01"
@@ -335,11 +339,15 @@ export default async function InvoiceDetailPage({
             </div>
 
             <div className="col-md-3">
-              <label className="form-label">
+              <label
+                className="form-label"
+                htmlFor="movement_date"
+              >
                 Data
               </label>
 
               <input
+                id="movement_date"
                 name="movement_date"
                 type="date"
                 defaultValue={new Date()
@@ -351,22 +359,30 @@ export default async function InvoiceDetailPage({
             </div>
 
             <div className="col-md-3">
-              <label className="form-label">
+              <label
+                className="form-label"
+                htmlFor="payment_method"
+              >
                 Metodo
               </label>
 
               <input
+                id="payment_method"
                 name="payment_method"
                 className="form-control"
               />
             </div>
 
             <div className="col-md-3">
-              <label className="form-label">
+              <label
+                className="form-label"
+                htmlFor="reference"
+              >
                 Riferimento
               </label>
 
               <input
+                id="reference"
                 name="reference"
                 className="form-control"
               />
@@ -389,7 +405,7 @@ export default async function InvoiceDetailPage({
       <div className="app-card p-3 mb-3">
         <h2 className="h5">Righe registrate</h2>
 
-        {invoice.lines.length ? (
+        {invoice.lines.length > 0 ? (
           <div className="table-responsive">
             <table className="table">
               <thead>
@@ -428,7 +444,7 @@ export default async function InvoiceDetailPage({
       <div className="app-card p-3 mb-3">
         <h2 className="h5">Rate registrate</h2>
 
-        {invoice.installments.length ? (
+        {invoice.installments.length > 0 ? (
           <ul>
             {invoice.installments.map((installment) => (
               <li

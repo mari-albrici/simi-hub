@@ -24,6 +24,30 @@ export async function searchDocuments(params:Record<string,string|undefined>={})
  return {rows:(result.data??[]) as ArchiveDocument[],count:result.count??0,filters:f};
 }
 export async function getArchiveDocument(id:string){const db=await authorizedClient("document.read");const r=await db.from("document_register").select("*").eq("id",z.uuid().parse(id)).maybeSingle();checkDatabase(r.error);return r.data as ArchiveDocument|null;}
+export async function getInvoiceDocuments(invoiceId: string) {
+  const db = await authorizedClient("document.read");
+  const id = z.uuid().parse(invoiceId);
+
+  const result = await db
+    .from("document_register")
+    .select("*")
+    .contains("invoice_ids", [id])
+    .is("archived_at", null)
+    .order("document_date", {
+      ascending: false,
+      nullsFirst: false,
+    })
+    .order("created_at", {
+      ascending: false,
+    });
+
+  checkDatabase(
+    result.error,
+    "Lettura documenti collegati alla fattura"
+  );
+
+  return (result.data ?? []) as ArchiveDocument[];
+}
 export async function getDocumentVersions(id:string){const db=await authorizedClient("document.read");return await readAll((a,b)=>db.from("document_versions").select("*").eq("document_id",z.uuid().parse(id)).order("version_number",{ascending:false}).range(a,b)) as DocumentVersion[];}
 export async function signedDocumentVersion(id:string,download=false){
  return createVersionSignedUrl(await authorizedClient("document.read"),z.uuid().parse(id),download);

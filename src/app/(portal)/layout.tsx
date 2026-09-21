@@ -9,6 +9,7 @@ import { NAV_ITEMS } from "@/lib/constants";
 import { getSessionUser } from "@/lib/session";
 import { canAccessPage } from "@/lib/permissions";
 import { ToastNotifications } from "@/components/ui/toast-notifications";
+import CurrentDateTime from "@/components/CurrentDateTime";
 
 export default async function PortalLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const sessionUser = await getSessionUser();
@@ -54,19 +55,45 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
 
           <div className="flex-grow-1" />
 
-          <div className="dropdown">
-            <button className="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-              {sessionUser.name}
-            </button>
-            <ul className="dropdown-menu dropdown-menu-end">
-              <li><hr className="dropdown-divider" /></li>
-              <li>
-                <form action={logoutAction}>
-                  <SubmitButton className="dropdown-item text-start" pendingLabel="Uscita…">Logout</SubmitButton>
-                </form>
-              </li>
-            </ul>
-          </div>
+          <div className="d-flex align-items-center gap-3">
+  <CurrentDateTime />
+
+  <div className="dropdown">
+    <button
+      className="btn p-0 border-0 dropdown-toggle user-avatar-dropdown"
+      type="button"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+      aria-label={`Menu utente ${sessionUser.name}`}
+    >
+      <span className="user-avatar">
+        {sessionUser.name
+          .trim()
+          .split(/\s+/)
+          .slice(0, 2)
+          .map((word) => word[0])
+          .join("")
+          .toUpperCase()}
+      </span>
+    </button>
+
+    <ul className="dropdown-menu dropdown-menu-end">
+      <li>
+        <hr className="dropdown-divider" />
+      </li>
+      <li>
+        <form action={logoutAction}>
+          <SubmitButton
+            className="dropdown-item text-start"
+            pendingLabel="Uscita…"
+          >
+            Logout
+          </SubmitButton>
+        </form>
+      </li>
+    </ul>
+  </div>
+</div>
         </header>
 
         <div className="offcanvas offcanvas-start sidebar" tabIndex={-1} id="mobileSidebar" aria-labelledby="mobileMenuTitle">

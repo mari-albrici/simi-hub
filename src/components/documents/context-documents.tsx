@@ -1,13 +1,70 @@
 import Link from "@/components/ui/app-link";
 import { searchDocuments } from "@/lib/documents";
-import { authorizedClient,getAccessScope } from "@/lib/permissions";
-import { checkDatabase } from "@/lib/errors";
+import { getAccessScope } from "@/lib/permissions";
 import { DocumentsTable } from "./documents-table";
 import { UploadDocumentTrigger } from "./upload-document-trigger";
-export async function ContextDocuments({project,company,invoice,entity}:{project?:string;company?:string;invoice?:string;entity?:string|null}){
- const context=Object.fromEntries(Object.entries({project,company,invoice,entity}).filter((e):e is [string,string]=>!!e[1]));
- const [result,access]=await Promise.all([searchDocuments(context),getAccessScope("document")]);
- let categories:{id:string;code:string;name:string;items:number}[]=[];
- if(project){const db=await authorizedClient("document.read");const r=await db.rpc("project_document_categories",{project});checkDatabase(r.error);categories=r.data??[];}
- return <section className="app-card p-3 my-3"><div className="d-flex justify-content-between mb-3"><h2 className="h5">Documenti ({result.count})</h2>{access.canUpload&&<UploadDocumentTrigger context={context}/>}</div>{project&&<div className="d-flex flex-wrap gap-2 mb-3">{categories.map(c=><Link key={c.id} className="btn btn-sm btn-outline-secondary" href={`/documenti?${new URLSearchParams({...context,category:c.id})}`}>{c.code} {c.name} <span className="badge text-bg-secondary">{c.items}</span></Link>)}</div>}<DocumentsTable documents={result.rows}/><Link href={`/documenti?${new URLSearchParams(context)}`}>Apri elenco completo e filtri</Link></section>;
+
+type ContextDocumentsProps = {
+  project?: string;
+  company?: string;
+  invoice?: string;
+  entity?: string | null;
+};
+
+export async function ContextDocuments({
+  project,
+  company,
+  invoice,
+  entity,
+}: ContextDocumentsProps) {
+  const context = Object.fromEntries(
+    Object.entries({
+      project,
+      company,
+      invoice,
+      entity,
+    }).filter((entry): entry is [string, string] => !!entry[1])
+  );
+
+  const [result, access] = await Promise.all([
+    searchDocuments(context),
+    getAccessScope("document"),
+  ]);
+
+  return (
+    <section className="app-card p-3">
+      {/* HEADER */}
+
+      <div className="d-flex justify-content-between align-items-center gap-3 mb-3">
+        <div>
+          <h2 className="h5 mb-0">
+            Documenti ({result.count})
+          </h2>
+        </div>
+
+        {access.canUpload && (
+          <UploadDocumentTrigger context={context} />
+        )}
+      </div>
+
+      {/* TABELLA DOCUMENTI */}
+
+      <DocumentsTable documents={result.rows} />
+
+      {/* ELENCO COMPLETO */}
+
+      <div className="mt-3">
+        <Link
+          href={`/documenti?${new URLSearchParams(context)}`}
+          className="text-decoration-none"
+        >
+          Apri elenco completo e filtri
+          <i
+            className="bi bi-arrow-right ms-1"
+            aria-hidden="true"
+          />
+        </Link>
+      </div>
+    </section>
+  );
 }

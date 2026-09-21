@@ -1,5 +1,5 @@
 import { requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { createCompanyAction } from "@/lib/crud";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -20,6 +20,7 @@ export default async function NewCustomerPage() {
 
         <form action={createCompanyAction} className="row g-3">
           <input type="hidden" name="company_type" value="customer" />
+<div className="col-md-6"><label className="form-label" htmlFor="esolver_code">Codice eSolver</label><input id="esolver_code" name="esolver_code" className="form-control" maxLength={120}/></div>
           <div className="col-md-6">
             <label className="form-label">Ragione sociale</label>
             <input name="business_name" className="form-control" required />

@@ -6,12 +6,9 @@ import {
   addDaysISO,
   getTimeStatus,
   isInvoiceOpen,
-  mapDeadlinePriority,
-  sortByPriorityThenDate,
   todayISO,
 } from "@/lib/dashboard-helpers";
 import type {
-  AttentionItem,
   CashFlowPoint,
   DeadlineListItem,
   FinancialBucket,
@@ -24,7 +21,6 @@ export type DashboardKpis = {
   payableOverdue: { amount: number; count: number; currencies?: Record<string, number> };
   receivableOverdue: { amount: number; count: number; currencies?: Record<string, number> };
   deadlinesNext7: number;
-  anomalies: number;
 };
 
 export type DashboardData = {
@@ -33,7 +29,6 @@ export type DashboardData = {
   // true quando una o più query hanno fallito: la UI mostra un avviso senza stack trace.
   error: boolean;
   kpis: DashboardKpis;
-  attentionItems: AttentionItem[];
   upcomingDeadlines: DeadlineListItem[];
   supplierSummary: FinancialBucket;
   customerSummary: FinancialBucket;
@@ -162,7 +157,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     const toVerifyInvoices = openInvoices.filter(
       (row) => (row.status === "anomaly" || row.status === "to_check") && !(row.due_date && row.due_date < today),
     );
-    const missingProjectInvoices = openInvoices.filter((row) => row.project_ids.length === 0);
+
 
     // DDT inference removed: category 06 is not a DDT/invoice relation.
     const ddtWithoutInvoice: DocumentRow[] = [];
@@ -172,124 +167,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     const next7 = await getDeadlines({period:"7"});
     const deadlinesNext7 = next7.count;
-    const anomalies = toVerifyInvoices.length + missingProjectInvoices.length + ddtWithoutInvoice.length;
 
-    // --- Attività che richiedono attenzione ---
-    const attentionItems: AttentionItem[] = [];
-
-    for (const inv of purchaseOverdue) {
-      attentionItems.push({
-        id: `inv-p-${inv.id}`,
-        type: "invoice_purchase_overdue",
-        priority: "critical",
-        title: `Pagamento fattura ${inv.invoice_number}`,
-        projectId: inv.project_ids[0],
-        projectCode: inv.project_ids.map(id => projectMap.get(id)?.project_code).filter(Boolean).join(", ") || undefined,
-        subjectName: inv.supplier_id ? companyMap.get(inv.supplier_id) : undefined,
-        dueDate: inv.due_date ?? undefined,
-        amount: inv.amount_total,
-        status: inv.status,
-        href: `/fatture/${inv.id}`,
-      });
-    }
-
-    for (const inv of saleOverdue) {
-      attentionItems.push({
-        id: `inv-s-${inv.id}`,
-        type: "invoice_sale_overdue",
-        priority: "critical",
-        title: `Incasso fattura ${inv.invoice_number}`,
-        projectId: inv.project_ids[0],
-        projectCode: inv.project_ids.map(id => projectMap.get(id)?.project_code).filter(Boolean).join(", ") || undefined,
-        subjectName: inv.customer_id ? companyMap.get(inv.customer_id) : undefined,
-        dueDate: inv.due_date ?? undefined,
-        amount: inv.amount_total,
-        status: inv.status,
-        href: `/fatture/${inv.id}`,
-      });
-    }
-
-    for (const d of deadlines) {
-      const timeStatus = getTimeStatus(d.due_date, today);
-      if (timeStatus !== "overdue" && timeStatus !== "today") continue;
-      attentionItems.push({
-        id: `dl-${d.id}`,
-        type: timeStatus === "overdue" ? "deadline_overdue" : "deadline_today",
-        priority: timeStatus === "overdue" ? "critical" : mapDeadlinePriority(d.priority),
-        title: d.title,
-        description: d.description ?? undefined,
-        projectId: d.project_id ?? undefined,
-        projectCode: d.project_id ? projectMap.get(d.project_id)?.project_code : undefined,
-        subjectName: d.company_id ? companyMap.get(d.company_id) : undefined,
-        dueDate: d.due_date ?? undefined,
-        status: d.status,
-        href: d.invoice_id ? `/fatture/${d.invoice_id}` : d.project_id ? `/commesse/${d.project_id}` : "/scadenze",
-      });
-    }
-
-    for (const inv of toVerifyInvoices) {
-      attentionItems.push({
-        id: `inv-check-${inv.id}`,
-        type: "invoice_to_check",
-        priority: inv.status === "anomaly" ? "high" : "medium",
-        title: `Fattura ${inv.invoice_type === "purchase" ? "fornitore" : "cliente"} da verificare`,
-        description: inv.invoice_number,
-        projectId: inv.project_ids[0],
-        projectCode: inv.project_ids.map(id => projectMap.get(id)?.project_code).filter(Boolean).join(", ") || undefined,
-        subjectName:
-          (inv.supplier_id && companyMap.get(inv.supplier_id)) || (inv.customer_id && companyMap.get(inv.customer_id)) || undefined,
-        dueDate: inv.due_date ?? undefined,
-        amount: inv.amount_total,
-        status: inv.status,
-        href: `/fatture/${inv.id}`,
-      });
-    }
-
-    for (const inv of missingProjectInvoices) {
-      attentionItems.push({
-        id: `inv-noproj-${inv.id}`,
-        type: "invoice_missing_project",
-        priority: "low",
-        title: "Fattura senza commessa",
-        description: inv.invoice_number,
-        subjectName:
-          (inv.supplier_id && companyMap.get(inv.supplier_id)) || (inv.customer_id && companyMap.get(inv.customer_id)) || undefined,
-        dueDate: inv.due_date ?? undefined,
-        amount: inv.amount_total,
-        status: inv.status,
-        href: `/fatture/${inv.id}`,
-      });
-    }
-
-    for (const doc of ddtWithoutInvoice) {
-      attentionItems.push({
-        id: `doc-ddt-${doc.id}`,
-        type: "ddt_without_invoice",
-        priority: "low",
-        title: "DDT senza fattura collegata",
-        description: doc.title,
-        projectId: doc.project_id ?? undefined,
-        projectCode: doc.project_id ? projectMap.get(doc.project_id)?.project_code : undefined,
-        href: `/documenti/${doc.id}`,
-      });
-    }
-
-    for (const doc of expiringDocuments) {
-      const timeStatus = getTimeStatus(doc.expiry_date, today);
-      attentionItems.push({
-        id: `doc-exp-${doc.id}`,
-        type: timeStatus === "overdue" ? "document_expired" : "document_expiring",
-        priority: timeStatus === "overdue" || timeStatus === "today" ? "high" : "medium",
-        title: timeStatus === "overdue" ? "Documento scaduto" : "Documento in scadenza",
-        description: doc.title,
-        projectId: doc.project_id ?? undefined,
-        projectCode: doc.project_id ? projectMap.get(doc.project_id)?.project_code : undefined,
-        dueDate: doc.expiry_date ?? undefined,
-        href: `/documenti/${doc.id}`,
-      });
-    }
-
-    const sortedAttentionItems = sortByPriorityThenDate(attentionItems);
 
     // Same source and server filters as the operational register.
     const upcomingRows=(await getDeadlines({period:"30"},true)).rows;
@@ -360,9 +238,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         payableOverdue: financialKpi("payment",true),
         receivableOverdue: financialKpi("receipt",true),
         deadlinesNext7,
-        anomalies,
       },
-      attentionItems: sortedAttentionItems,
       upcomingDeadlines,
       supplierSummary: bucketize(purchaseOpen, today, in7, in30),
       customerSummary: bucketize(saleOpen, today, in7, in30),

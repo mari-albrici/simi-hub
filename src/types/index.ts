@@ -8,6 +8,8 @@ export type RoleName =
   | "hr";
 
 export type PermissionName =
+  | "task.read" | "task.create" | "task.update" | "task.assign" | "task.archive"
+  | "anomaly.read" | "anomaly.update" | "anomaly.assign" | "anomaly.ignore"
   | "project.read"
   | "project.create"
   | "project.update"

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { searchDocuments } from "@/lib/documents";
 import { authorizedClient,getAccessScope } from "@/lib/permissions";
 import { checkDatabase } from "@/lib/errors";

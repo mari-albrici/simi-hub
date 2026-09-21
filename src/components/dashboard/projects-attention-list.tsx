@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import type { ProjectAttention } from "@/types";
 import { DashboardEmptyState } from "./dashboard-empty-state";
 

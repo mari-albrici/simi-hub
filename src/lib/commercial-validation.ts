@@ -10,3 +10,5 @@ export type CommercialKind="order"|"delivery_note";
 export const commercialKind=z.enum(["order","delivery_note"]);
 export const commercialLabels:Record<string,string>={draft:"Bozza",confirmed:"Confermato / non evaso",partially_fulfilled:"Parzialmente evaso",fulfilled:"Evaso",overdelivered:"Sovraconsegna",cancelled:"Annullato",purchase:"Acquisto",sale:"Vendita",inbound:"Entrata",outbound:"Uscita"};
 export function commercialPath(kind:CommercialKind){return kind==="order"?"/ordini":"/ddt";}
+
+export const contractTypeLabels: Record<string,string> = {other:"Altro",customer:"Cliente",supplier:"Fornitore",employee:"Dipendente",subcontract:"Subappalto",subcontractor:"Subappalto"};

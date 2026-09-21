@@ -1,3 +1,5 @@
+import Link from "./app-link";
+
 type PageHeaderProps = {
   title: string;
   description?: string;
@@ -13,7 +15,7 @@ export function PageHeader({ title, description, actionLabel, actionHref }: Page
         {description ? <p className="text-muted mb-0">{description}</p> : null}
       </div>
       {actionLabel && actionHref ? (
-        <a href={actionHref} className="btn btn-dark">{actionLabel}</a>
+        <Link href={actionHref} className="btn btn-dark">{actionLabel}</Link>
       ) : null}
     </div>
   );

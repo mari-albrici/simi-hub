@@ -8,7 +8,8 @@ const devOrigins = [
 ];
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: devOrigins,
+  // Next 16 matches hostnames here; serverActions.allowedOrigins uses hosts.
+  allowedDevOrigins: ["localhost", "127.0.0.1", "*.app.github.dev"],
   // @napi-rs/canvas (native binding) e tesseract.js (worker/WASM) non vanno bundlati
   // dal Server Components bundler: causano "non-ecmascript placeable asset" in build.
   serverExternalPackages: ["@napi-rs/canvas", "tesseract.js", "unpdf"],

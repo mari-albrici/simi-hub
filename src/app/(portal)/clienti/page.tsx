@@ -1,14 +1,20 @@
+import { CompanyFilters } from "@/components/ui/company-filters";
+import { filterCompanies } from "@/lib/company-filters";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { getAccessScope, requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { deleteCompanyAction } from "@/lib/crud";
-import { getCompaniesByType } from "@/lib/data";
+import { getCompaniesByType, getAllCompanyContacts } from "@/lib/data";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 
-export default async function CustomersPage() {
+export default async function CustomersPage({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}) {
   await requirePagePermission("company.read");
   const access = await getAccessScope("company");
-  const customers = await getCompaniesByType("customer");
+  const [allCompanies, contacts] = await Promise.all([getCompaniesByType("customer"), getAllCompanyContacts()]);
 
+  const p = await searchParams;
+  const customers = filterCompanies(allCompanies, p);
   return (
     <>
       <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
@@ -19,42 +25,33 @@ export default async function CustomersPage() {
         {access.canCreate && <Link href="/clienti/new" className="btn btn-dark">+ Nuovo cliente</Link>}
       </div>
 
-      <div className="app-card p-3">
+      <CompanyFilters params={p} countries={[...new Set(allCompanies.map(c=>c.country).filter((c):c is string=>!!c))]} />
+      <div className="app-card">
         <div className="table-responsive">
-          <table className="table align-middle mb-0">
+          <table className="table table-admin align-middle mb-0">
             <thead>
               <tr>
-                <th>Ragione sociale</th>
-                <th>P. IVA</th>
-                <th>Paese</th>
-                <th>Email</th>
-                <th>Telefono</th>
-                <th>Attivo</th>
-                <th className="text-end">Azioni</th>
+                <th>Nome</th><th>Paese</th><th>P.IVA / identificativo</th><th>Referente</th><th>Stato</th><th className="col-actions"><span className="visually-hidden">Azioni</span></th>
               </tr>
             </thead>
             <tbody>
-              {customers.length === 0 && <tr><td colSpan={9} className="text-muted py-4">Nessun record presente.</td></tr>}
+              {customers.length === 0 && <tr><td colSpan={6} className="text-muted py-4">Nessun record presente.</td></tr>}
               {customers.map((customer) => (
                 <tr key={customer.id}>
-                  <td>
+                  <td className="col-description" title={customer.business_name}>
                     <Link href={`/clienti/${customer.id}`} className="text-decoration-none fw-semibold text-dark">
                       {customer.business_name}
                     </Link>
+                    {customer.esolver_code && <div className="small text-muted text-truncate">eSolver {customer.esolver_code}</div>}
                   </td>
-                  <td>{customer.vat_number ?? "-"}</td>
-                  <td>{customer.country ?? "-"}</td>
-                  <td>{customer.email ?? "-"}</td>
-                  <td>{customer.phone ?? "-"}</td>
-                  <td>
-                    <span className={`badge ${customer.active ? "text-bg-success" : "text-bg-secondary"}`}>
-                      {customer.active ? "Sì" : "No"}
-                    </span>
-                  </td>
-                  <td className="text-end">
-                    <div className="d-flex gap-2 justify-content-end">
-                      <Link href={`/clienti/${customer.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>
-                      {access.canUpdate && <Link href={`/clienti/${customer.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>}
+                  <td className="text-nowrap">{customer.country ?? "—"}</td>
+                  <td className="col-description">{customer.vat_number ?? "—"}</td>
+                  <td className="col-description">{contacts.filter(c=>c.company_id===customer.id).map(c=>c.label).join(", ") || "—"}</td>
+                  <td className="col-status"><StatusBadge status={customer.active ? "active" : "inactive"}/></td>
+                  <td className="col-actions">
+                    <RowActionsMenu label={`Azioni per ${customer.business_name}`}>
+                      <Link href={`/clienti/${customer.id}`} className="dropdown-item">Visualizza</Link>
+                      {access.canUpdate && <Link href={`/clienti/${customer.id}/edit`} className="dropdown-item">Modifica</Link>}
                       {access.canDelete && <form action={async () => {
                         "use server";
                         await deleteCompanyAction(customer.id, "customer");
@@ -63,7 +60,7 @@ export default async function CustomersPage() {
                           Archivia
                         </ConfirmSubmitButton>
                       </form>}
-                    </div>
+                    </RowActionsMenu>
                   </td>
                 </tr>
               ))}

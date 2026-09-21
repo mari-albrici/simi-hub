@@ -1,4 +1,6 @@
 "use client";
+import { FileLink } from "@/components/documents/file-link";
+
 
 import { useEffect, useRef, useState } from "react";
 import { LoadingSpinner } from "@/components/ui/loading";
@@ -35,8 +37,8 @@ export function PdfPreviewModal({ versionId, filename, label = "Visualizza PDF" 
           <div className="modal-header py-2">
             <h2 className="modal-title fs-6 text-truncate" id="pdf-preview-title">{filename}</h2>
             <div className="d-flex align-items-center gap-2 ms-auto">
-              <a className="btn btn-sm btn-outline-secondary" href={`${fileUrl}?download=1`}><i className="bi bi-download me-1" aria-hidden="true" />Scarica</a>
-              <a className="btn btn-sm btn-outline-secondary" href={fileUrl} target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right me-1" aria-hidden="true" />Apri</a>
+              <FileLink className="btn btn-sm btn-outline-secondary" href={`${fileUrl}?download=1`}><i className="bi bi-download me-1" aria-hidden="true" />Scarica</FileLink>
+              <FileLink className="btn btn-sm btn-outline-secondary" href={fileUrl} target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right me-1" aria-hidden="true" />Apri</FileLink>
               <button ref={closeButton} type="button" className="btn-close" aria-label="Chiudi anteprima PDF" onClick={() => setOpen(false)} />
             </div>
           </div>

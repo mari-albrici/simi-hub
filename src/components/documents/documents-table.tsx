@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import type { ArchiveDocument } from "@/lib/documents";
 import { documentStatusLabels } from "@/lib/document-validation";
 import { formatDate } from "@/lib/formatters";

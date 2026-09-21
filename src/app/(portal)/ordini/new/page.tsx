@@ -1,2 +1,2 @@
-import Link from "next/link";import { requirePagePermission } from "@/lib/permissions";import { commercialOptions } from "@/lib/commercial";import { OrderForm } from "../order-form";
+import Link from "@/components/ui/app-link";import { requirePagePermission } from "@/lib/permissions";import { commercialOptions } from "@/lib/commercial";import { OrderForm } from "../order-form";
 export default async function NewOrder({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){await requirePagePermission("order.create");const p=await searchParams;return <><Link href="/ordini">← Ordini</Link><h1 className="h3 my-3">Nuovo ordine</h1><OrderForm options={await commercialOptions()} projectId={p.project}/></>}

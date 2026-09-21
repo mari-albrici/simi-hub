@@ -1,19 +1,21 @@
+import { formatMoney } from "@/lib/formatters";
 import { requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { getDashboardData } from "@/lib/dashboard";
 import { formatCurrencyEUR } from "@/lib/dashboard-helpers";
 import { DashboardKpiCard } from "@/components/dashboard/kpi-card";
-import { AttentionList } from "@/components/dashboard/attention-list";
+import { WorkAttention } from "@/components/work/dashboard-attention";
+import { getWorkDashboard } from "@/lib/work/dashboard";
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { FinancialSummary } from "@/components/dashboard/financial-summary";
 import { CashFlowChart } from "@/components/dashboard/cash-flow-chart";
 import { ProjectsAttentionList } from "@/components/dashboard/projects-attention-list";
 import { DashboardEmptyState } from "@/components/dashboard/dashboard-empty-state";
 
-function kpiValue(kpi:{amount:number;currencies?:Record<string,number>}){const values=Object.entries(kpi.currencies??{});return values.length?values.map(([currency,amount])=>new Intl.NumberFormat("it-IT",{style:"currency",currency}).format(amount)).join(" · "):formatCurrencyEUR(0);}
+function kpiValue(kpi:{amount:number;currencies?:Record<string,number>}){const values=Object.entries(kpi.currencies??{});return values.length?values.map(([currency,amount])=>formatMoney(amount,currency)).join(" · "):formatCurrencyEUR(0);}
 export default async function DashboardPage() {
   await requirePagePermission("dashboard.read");
-  const data = await getDashboardData();
+  const [data,work] = await Promise.all([getDashboardData(),getWorkDashboard()]);
   const today = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 
@@ -84,21 +86,21 @@ export default async function DashboardPage() {
         <div className="col-md-6 col-xl-4 col-xxl-2">
           <DashboardKpiCard
             label="Anomalie"
-            value={String(data.kpis.anomalies)}
-            tone={data.kpis.anomalies > 0 ? "warning" : "secondary"}
-            href="/fatture?status=anomaly"
+            value={String(work.count)}
+            tone={work.count > 0 ? "warning" : "secondary"}
+            href="/anomalie"
           />
         </div>
       </div>
 
       <div className="app-card p-3 mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="h5 mb-0">Attività che richiedono attenzione</h2>
-          <Link href="/scadenze" className="btn btn-sm btn-outline-secondary">
-            Mostra tutte →
+          <h2 className="h5 mb-0">Attività e anomalie da seguire</h2>
+          <Link href="/attivita" className="btn btn-sm btn-outline-secondary">
+            Attività
           </Link>
         </div>
-        <AttentionList items={data.attentionItems} />
+        <WorkAttention data={work} />
       </div>
 
       <div className="row g-4 mb-4">

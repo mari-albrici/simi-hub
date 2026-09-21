@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { loginAction } from "@/app/login/actions";
 import { SubmitButton } from "@/components/ui/submit-button";
 

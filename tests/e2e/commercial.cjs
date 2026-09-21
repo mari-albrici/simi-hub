@@ -11,7 +11,7 @@ const assert=require('node:assert/strict');
  try{
  await page.goto(base+'/ordini');await page.getByRole('link',{name:'Nuovo ordine',exact:true}).click();
  await page.getByLabel('Numero ordine',{exact:true}).fill('E2E-'+suffix);await page.getByLabel('Data',{exact:true}).fill('2026-09-18');
- await page.getByLabel('Società SIMI',{exact:true}).selectOption({label:'SIMI-IT — SIMI Italia'});
+ await page.getByLabel('Società SIMI',{exact:true}).selectOption({label:'SIMI-IT — SIMI S.r.l.'});
  await page.getByLabel('Controparte',{exact:true}).selectOption('25000000-0000-4000-8000-000000000001');
  await page.getByLabel('Descrizione riga 1',{exact:true}).fill('Materiale E2E');await page.getByLabel('Quantità riga 1',{exact:true}).fill('100');await page.getByLabel('Prezzo unitario riga 1',{exact:true}).fill('10');
  await page.getByLabel('Commessa riga 1',{exact:true}).selectOption('35000000-0000-4000-8000-000000000001');

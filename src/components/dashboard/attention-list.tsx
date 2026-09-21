@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import type { AttentionItem } from "@/types";
 import { PRIORITY_BADGE_VARIANT, PRIORITY_LABEL, formatCurrencyEUR, formatDateIT } from "@/lib/dashboard-helpers";
 import { DashboardEmptyState } from "./dashboard-empty-state";

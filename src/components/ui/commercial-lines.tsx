@@ -1,4 +1,6 @@
 "use client";
+import { formatDate } from "@/lib/formatters";
+
 import { useState } from "react";
 import type { CommercialLine,OrderChoice } from "@/lib/commercial";
 type Props={kind:"order"|"delivery";projects:{id:string;project_code:string}[];projectId?:string;lines:CommercialLine[];onChange:(lines:CommercialLine[])=>void;orders?:OrderChoice[]};
@@ -18,7 +20,7 @@ export function CommercialLines({kind,projects,projectId,lines,onChange,orders=[
  <td><input aria-label={`Unità riga ${index+1}`} className="form-control" value={line.unit??""} onChange={e=>update(index,{unit:e.target.value})}/></td>
  {kind==="order"&&([['unit_price','Prezzo unitario'],['discount','Sconto importo'],['vat_rate','IVA %']] as const).map(([key,label])=><td key={key}><input aria-label={`${label} riga ${index+1}`} type="number" min="0" step={key==="unit_price"?"0.0001":"0.01"} max={key==="vat_rate"?100:undefined} className="form-control" required value={line[key]??0} onChange={e=>update(index,{[key]:Number(e.target.value)})}/></td>)}
  <td><select aria-label={`Commessa riga ${index+1}`} className="form-select" value={line.project_id??""} onChange={e=>update(index,{project_id:e.target.value||null,order_line_id:null})}><option value="">Nessuna</option>{projects.map(p=><option key={p.id} value={p.id}>{p.project_code}</option>)}</select></td>
- {kind==="delivery"&&<td style={{minWidth:280}}><select aria-label={`Ordine riga ${index+1}`} className="form-select mb-1" value={order?.id??""} onChange={e=>{setSelection({...selection,[index]:e.target.value});update(index,{order_line_id:null});}}><option value="">Senza ordine</option>{orders.filter(o=>o.lines.some(l=>!line.project_id||l.project_id===line.project_id)).map(o=><option key={o.id} value={o.id}>{o.order_number} · {o.order_date} · {o.counterparty_name}</option>)}</select>
+ {kind==="delivery"&&<td style={{minWidth:280}}><select aria-label={`Ordine riga ${index+1}`} className="form-select mb-1" value={order?.id??""} onChange={e=>{setSelection({...selection,[index]:e.target.value});update(index,{order_line_id:null});}}><option value="">Senza ordine</option>{orders.filter(o=>o.lines.some(l=>!line.project_id||l.project_id===line.project_id)).map(o=><option key={o.id} value={o.id}>{o.order_number} · {formatDate(o.order_date)} · {o.counterparty_name}</option>)}</select>
  {order&&<select aria-label={`Riga ordine ${index+1}`} className="form-select" value={line.order_line_id??""} onChange={e=>{const l=order.lines.find(l=>l.id===e.target.value);update(index,{order_line_id:l?.id??null,...(l?{description:line.description||l.description,unit:l.unit,project_id:l.project_id}: {})});}}><option value="">Seleziona riga</option>{order.lines.filter(l=>!line.project_id||l.project_id===line.project_id).map(l=><option key={l.id} value={l.id}>{l.description} · {projects.find(p=>p.id===l.project_id)?.project_code??"Senza commessa"} · ordinati {l.quantity}, consegnati {l.delivered_quantity}, residui {l.remaining_quantity}</option>)}</select>}
  {line.order_line_id&&!chosen&&<small className="text-warning">Collegamento esistente non selezionabile con i filtri correnti. Verrà validato al salvataggio.</small>}
  </td>}

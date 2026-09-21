@@ -33,7 +33,7 @@ export default async function LegalEntitiesPage({
             <p className="mb-0">Aggiungi le società e le sedi del gruppo SIMI per iniziare.</p>
           </div>
         ) : (
-          <table className="table align-middle mb-0">
+          <div className="table-responsive"><table className="table table-admin align-middle mb-0">
             <thead>
               <tr>
                 <th>Codice</th>
@@ -56,7 +56,7 @@ export default async function LegalEntitiesPage({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </>

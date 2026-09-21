@@ -1,5 +1,9 @@
+import { FilterForm } from "@/components/ui/filter-form";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { FilterToolbar } from "@/components/ui/filter-toolbar";
+import { formatDate, formatMoney } from "@/lib/formatters";
 import { getAccessScope, requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { deleteInvoiceAction } from "@/lib/crud";
 import { getInvoices, getLegalEntities } from "@/lib/data";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
@@ -7,7 +11,6 @@ import { NewInvoiceTrigger } from "./new-invoice-trigger";
 import { getInvoiceFinancialSummaries } from "@/lib/finance";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { statusLabel } from "@/lib/status";
-import { formatDate,formatMoney } from "@/lib/formatters";
 
 // Il workflow PDF rimane nella pagina dedicata con InvoiceForm.
 // margine esplicito oltre al timeout interno di invoice-pdf-parser.ts (45s).
@@ -67,24 +70,15 @@ export default async function InvoicesPage({
 
 
       <div className="app-card p-3">
-        <form className="row g-2 mb-3" method="get">
-          <div className="col-md-3"><label className="form-label small">Ricerca numero fattura</label><input name="search" defaultValue={search ?? ""} className="form-control" /></div><div className="col-md-2"><label className="form-label small">Prog. eSolver</label><input name="esolver_registration_number" defaultValue={esolver ?? ""} className="form-control" /></div>
-          <div className="col-md-2"><label className="form-label small">Tipo</label><select name="type" defaultValue={type ?? ""} className="form-select"><option value="">Tutte</option><option value="purchase">Acquisto</option><option value="sale">Vendita</option></select></div>
-          <div className="col-md-3"><label className="form-label small">Società SIMI</label><select name="legal_entity_id" defaultValue={params.legal_entity_id ?? ""} className="form-select"><option value="">Tutte</option>{legalEntities.map(e => <option key={e.id} value={e.id}>{e.business_name}</option>)}</select></div>
-          <div className="col-md-2"><label className="form-label small">Stato finanziario</label><select name="financial" defaultValue={financialFilter ?? ""} className="form-select"><option value="">Tutti</option><option value="to_pay">Da pagare/incassare</option><option value="partial">Parziale</option><option value="paid">Saldata</option><option value="overdue">Scaduta</option></select></div>
-          <div className="col-md-2 d-flex align-items-end"><button className="btn btn-outline-primary w-100" type="submit"><i className="bi bi-funnel me-1" />Filtra</button></div>
-          <div className="col-md-3"><label className="form-label small">Data documento da</label><input name="date_from" type="date" defaultValue={params.date_from ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Data documento a</label><input name="date_to" type="date" defaultValue={params.date_to ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Scadenza da</label><input name="due_from" type="date" defaultValue={params.due_from ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Scadenza a</label><input name="due_to" type="date" defaultValue={params.due_to ?? ""} className="form-control" /></div>
-        </form>
+        <FilterForm method="get">{params.status&&<input type="hidden" name="status" value={params.status}/>} {params.company_id&&<input type="hidden" name="company_id" value={params.company_id}/>} {params.project_id&&<input type="hidden" name="project_id" value={params.project_id}/>}<FilterToolbar activeCount={[params.esolver_registration_number,params.legal_entity_id,params.date_from,params.date_to,params.due_from,params.due_to].filter(Boolean).length} advanced={<><div className="col-md-2"><label className="form-label small">Prog. eSolver</label><input name="esolver_registration_number" defaultValue={esolver ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Società SIMI</label><select name="legal_entity_id" defaultValue={params.legal_entity_id ?? ""} className="form-select"><option value="">Tutte</option>{legalEntities.map(e => <option key={e.id} value={e.id}>{e.business_name}</option>)}</select></div><div className="col-md-3"><label className="form-label small">Data documento da</label><input name="date_from" type="date" defaultValue={params.date_from ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Data documento a</label><input name="date_to" type="date" defaultValue={params.date_to ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Scadenza da</label><input name="due_from" type="date" defaultValue={params.due_from ?? ""} className="form-control" /></div><div className="col-md-3"><label className="form-label small">Scadenza a</label><input name="due_to" type="date" defaultValue={params.due_to ?? ""} className="form-control" /></div></>}><div className="col-md-3"><label className="form-label small">Ricerca numero fattura</label><input name="search" defaultValue={search ?? ""} className="form-control" /></div><div className="col-md-2"><label className="form-label small">Tipo</label><select name="type" defaultValue={type ?? ""} className="form-select"><option value="">Tutte</option><option value="purchase">Acquisto</option><option value="sale">Vendita</option></select></div><div className="col-md-2"><label className="form-label small">Stato finanziario</label><select name="financial" defaultValue={financialFilter ?? ""} className="form-select"><option value="">Tutti</option><option value="to_pay">Da pagare/incassare</option><option value="partial">Parziale</option><option value="paid">Saldata</option><option value="overdue">Scaduta</option></select></div></FilterToolbar></FilterForm>
         <div className="table-responsive"><table className="table table-admin align-middle mb-0">
           <thead>
             <tr>
-              <th>Tipo</th><th>Numero</th><th>Prog. eSolver</th>
+              <th>Numero</th>
               <th>Data</th>
               <th>Fornitore / Cliente</th>
               <th>Commessa</th>
-              <th>Società</th>
               <th>Totale</th>
-              <th>Pagato</th>
               <th>Residuo</th>
               <th>Scadenza</th>
               <th>Stato</th>
@@ -92,23 +86,21 @@ export default async function InvoicesPage({
             </tr>
           </thead>
           <tbody>
-              {displayedInvoices.length === 0 && <tr><td colSpan={13} className="text-muted py-4"><p>{hasFilter ? "Nessuna fattura per i filtri selezionati." : "Nessuna fattura registrata."}</p>{access.canCreate && <NewInvoiceTrigger />}</td></tr>}
+              {displayedInvoices.length === 0 && <tr><td colSpan={9} className="text-muted py-4"><p>{hasFilter ? "Nessuna fattura per i filtri selezionati." : "Nessuna fattura registrata."}</p>{access.canCreate && <NewInvoiceTrigger />}</td></tr>}
             {displayedInvoices.map((invoice) => { const f = financial.get(invoice.id); return (
               <tr key={invoice.id}>
-                <td><span className={`badge ${invoice.invoice_type === "purchase" ? "text-bg-secondary" : "text-bg-info"}`}>{invoice.invoice_type === "purchase" ? "Acquisto" : "Vendita"}</span></td><td><Link href={`/fatture/${invoice.id}`} className="text-decoration-none fw-semibold">{invoice.invoice_number}</Link></td><td>{invoice.esolver_registration_number || "—"}</td>
+                <td className="col-description"><Link href={`/fatture/${invoice.id}`} className="fw-semibold">{invoice.invoice_number}</Link><div className="small text-muted text-truncate">{invoice.invoice_type==="purchase"?"Acquisto":"Vendita"}{invoice.esolver_registration_number&&` · eSolver ${invoice.esolver_registration_number}`}</div><div className="small text-muted text-truncate" title={invoice.company_name}>{invoice.company_name}</div></td>
                 <td className="col-date">{formatDate(invoice.invoice_date)}</td>
-                <td>{invoice.customer_name}</td>
-                <td>{invoice.project_code}</td>
-                <td>{invoice.company_name}</td>
+                <td className="col-description" title={invoice.customer_name}>{invoice.customer_name}</td>
+                <td className="col-description">{invoice.project_code}</td>
                 <td className="col-money">{formatMoney(invoice.amount_total, invoice.currency)}</td>
-                <td>{f?.paid.toFixed(2)} {invoice.currency}</td>
-                <td>{f?.residual.toFixed(2)} {invoice.currency}</td>
-                <td>{invoice.due_date ?? "-"}</td>
-                <td><StatusBadge domain="invoice" status={invoice.status}/></td>
-                <td className="text-end">
-                  <div className="d-flex gap-2 justify-content-end">
-                    <Link href={`/fatture/${invoice.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>
-                    {access.canUpdate && <Link href={`/fatture/${invoice.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>}
+                <td className="col-money">{formatMoney(f?.residual,invoice.currency)}</td>
+                <td className="col-date">{formatDate(invoice.due_date)}</td>
+                <td className="col-status"><StatusBadge domain="invoice" status={invoice.status}/></td>
+                <td className="col-actions">
+                  <RowActionsMenu>
+                    <Link href={`/fatture/${invoice.id}`} className="dropdown-item">Visualizza</Link>
+                    {access.canUpdate && <Link href={`/fatture/${invoice.id}/edit`} className="dropdown-item">Modifica</Link>}
                     {access.canDelete && <form action={async () => {
                       "use server";
                       await deleteInvoiceAction(invoice.id);
@@ -117,7 +109,7 @@ export default async function InvoicesPage({
                         Archivia
                       </ConfirmSubmitButton>
                     </form>}
-                  </div>
+                  </RowActionsMenu>
                 </td>
               </tr> ); })}
           </tbody>

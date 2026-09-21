@@ -1,6 +1,7 @@
+import { StatusBadge } from "@/components/ui/status-badge";
 import { ContextDocuments } from "@/components/documents/context-documents";
 import { getAccessScope, requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { notFound } from "next/navigation";
 import { getCompanyById } from "@/lib/data";
 
@@ -31,23 +32,22 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           <div className="d-flex flex-wrap gap-3 text-muted small">
             <span>Paese: {customer.country ?? "-"}</span>
             <span>P. IVA: {customer.vat_number ?? "-"}</span>
-            <span>Attivo: {customer.active ? "Sì" : "No"}</span>
+            <StatusBadge status={customer.active?"active":"inactive"}/>
           </div>
         </div>
         {access.canUpdate && <Link href={`/clienti/${customer.id}/edit`} className="btn btn-dark">Modifica</Link>}
       </div>
 
-      <div className="row g-4">
-        <div className="col-lg-8">
+      <div className="row g-3 mb-4">
+        <div className="col-12">
           <div className="app-card p-3">
             <h2 className="h5 mb-3">Anagrafica</h2>
+            <p><strong>Codice eSolver:</strong> {customer.esolver_code || "—"}</p>
             <div className="row g-3">
               <div className="col-md-6"><strong>Ragione sociale:</strong> {customer.business_name}</div>
               <div className="col-md-6"><strong>Email:</strong> {customer.email ?? "-"}</div>
               <div className="col-md-6"><strong>Telefono:</strong> {customer.phone ?? "-"}</div>
               <div className="col-md-6"><strong>Indirizzo:</strong> {customer.address ?? "-"}{customer.city ? `, ${customer.city}` : ""}</div>
-
-              <div className="col-md-6"><strong>Paese:</strong> {customer.country ?? "-"}</div>
             </div>
           </div>
         </div>

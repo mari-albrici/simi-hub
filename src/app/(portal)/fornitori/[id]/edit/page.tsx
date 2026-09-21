@@ -1,5 +1,5 @@
 import { requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { notFound } from "next/navigation";
 import { getCompanyById } from "@/lib/data";
 import { updateCompanyAction } from "@/lib/crud";
@@ -30,6 +30,7 @@ export default async function EditSupplierPage({ params }: { params: Promise<{ i
         <form action={updateCompanyAction} className="row g-3">
           <input type="hidden" name="id" value={supplier.id} />
           <input type="hidden" name="company_type" value={supplier.company_type} />
+<div className="col-md-6"><label className="form-label" htmlFor="esolver_code">Codice eSolver</label><input id="esolver_code" name="esolver_code" className="form-control" maxLength={120} defaultValue={supplier.esolver_code ?? ""}/></div>
           <div className="col-md-6">
             <label className="form-label">Ragione sociale</label>
             <input name="business_name" className="form-control" defaultValue={supplier.business_name} required />

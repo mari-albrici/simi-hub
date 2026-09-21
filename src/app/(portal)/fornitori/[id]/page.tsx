@@ -1,6 +1,7 @@
+import { StatusBadge } from "@/components/ui/status-badge";
 import { ContextDocuments } from "@/components/documents/context-documents";
 import { getAccessScope, requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { notFound } from "next/navigation";
 import { getCompanyById } from "@/lib/data";
 
@@ -31,23 +32,22 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
           <div className="d-flex flex-wrap gap-3 text-muted small">
             <span>Paese: {supplier.country ?? "-"}</span>
             <span>P. IVA: {supplier.vat_number ?? "-"}</span>
-            <span>Attivo: {supplier.active ? "Sì" : "No"}</span>
+            <StatusBadge status={supplier.active?"active":"inactive"}/>
           </div>
         </div>
         {access.canUpdate && <Link href={`/fornitori/${supplier.id}/edit`} className="btn btn-dark">Modifica</Link>}
       </div>
 
-      <div className="row g-4">
-        <div className="col-lg-8">
+      <div className="row g-3 mb-4">
+        <div className="col-12">
           <div className="app-card p-3">
             <h2 className="h5 mb-3">Anagrafica</h2>
+            <p><strong>Codice eSolver:</strong> {supplier.esolver_code || "—"}</p>
             <div className="row g-3">
               <div className="col-md-6"><strong>Ragione sociale:</strong> {supplier.business_name}</div>
               <div className="col-md-6"><strong>Email:</strong> {supplier.email ?? "-"}</div>
               <div className="col-md-6"><strong>Telefono:</strong> {supplier.phone ?? "-"}</div>
               <div className="col-md-6"><strong>Indirizzo:</strong> {supplier.address ?? "-"}{supplier.city ? `, ${supplier.city}` : ""}</div>
-
-              <div className="col-md-6"><strong>Paese:</strong> {supplier.country ?? "-"}</div>
             </div>
           </div>
         </div>

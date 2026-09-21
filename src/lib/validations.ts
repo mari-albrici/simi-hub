@@ -29,6 +29,7 @@ export const invoiceLineSchema = z.object({
 });
 export const installmentSchema = z.object({ id: uuidSchema.optional(), due_date: dateSchema, amount: amount.refine(n => n !== 0), paid: z.boolean() });
 export const companyFormSchema = z.object({
+  esolver_code: z.preprocess(v => v === undefined || v === null || v === "" ? null : v, z.string().trim().max(120).nullable()),
   company_type: z.enum(["customer", "supplier", "both"]), business_name: z.string().trim().min(2).max(250),
   vat_number: optionalText.refine(v => !v || /^[\p{L}\p{N} .\/-]{2,40}$/u.test(v), "Identificativo fiscale non valido"),
   country: optionalText, city: optionalText, address: optionalText,

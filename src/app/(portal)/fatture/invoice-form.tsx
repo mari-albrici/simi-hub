@@ -1,9 +1,11 @@
 "use client";
+import { formatMoney } from "@/lib/formatters";
+
 
 import { statusOptions } from "@/lib/status";
 
 import { useId, useMemo, useRef, useState, useTransition } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { invoiceLineAmounts } from "@/lib/invoice-calculations";
 import { createInvoiceAction, updateInvoiceAction } from "@/lib/crud";
 import { extractInvoiceFromPdfAction, type InvoiceExtraction } from "@/lib/invoice-pdf-parser";
@@ -615,7 +617,7 @@ export function InvoiceForm({
                         <td>
                           <input placeholder="Motivo (se esente)" className="form-control form-control-sm" value={line.vat_exempt_reason} onChange={(event) => updateLine(line.key, { vat_exempt_reason: event.target.value })} />
                         </td>
-                        <td className="text-end">€ {total.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-end">{formatMoney(total,currency)}</td>
                         <td>
                           <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setLines((prev) => prev.filter((item) => item.key !== line.key))}>×</button>
                         </td>
@@ -727,7 +729,7 @@ export function InvoiceForm({
               </table>
               {installmentsTotal !== displayAmountTotal && (
                 <p className="text-muted small mb-0">
-                  Totale rate: € {installmentsTotal.toLocaleString("it-IT", { minimumFractionDigits: 2 })} (fattura: € {displayAmountTotal.toLocaleString("it-IT", { minimumFractionDigits: 2 })})
+                  Totale rate: {formatMoney(installmentsTotal,currency)} (fattura: {formatMoney(displayAmountTotal,currency)})
                 </p>
               )}
             </div>

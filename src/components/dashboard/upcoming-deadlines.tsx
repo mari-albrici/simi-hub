@@ -1,7 +1,9 @@
 "use client";
+import { formatMoney } from "@/lib/formatters";
+
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import type { DeadlineListItem } from "@/types";
 import { TIME_STATUS_LABEL, formatDateIT } from "@/lib/dashboard-helpers";
 import { DashboardEmptyState } from "./dashboard-empty-state";
@@ -68,7 +70,7 @@ export function UpcomingDeadlines({ items }: { items: DeadlineListItem[] }) {
                 </div>
                 <div className="text-end">
                   <div className="small">{formatDateIT(item.dueDate)}</div>
-                  {item.amount ? <div className="small text-muted">{new Intl.NumberFormat("it-IT",{style:"currency",currency:item.currency||"EUR"}).format(item.amount)}</div> : null}
+                  {item.amount ? <div className="small text-muted">{formatMoney(item.amount,item.currency||"EUR")}</div> : null}
                   <span
                     className={`badge text-bg-${
                       item.timeStatus === "overdue" ? "danger" : item.timeStatus === "today" ? "warning" : "secondary"

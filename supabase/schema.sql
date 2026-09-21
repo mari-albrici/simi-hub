@@ -22,3 +22,5 @@
 \ir migrations/018_phase1g_relation_actions.sql
 \ir migrations/019_phase2a_employees_hr.sql
 \ir migrations/020_phase2a1_status_documents_entities.sql
+\ir migrations/021_phase2a5_company_esolver.sql
+\ir migrations/022_phase2b_work.sql

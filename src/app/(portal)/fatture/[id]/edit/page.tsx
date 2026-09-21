@@ -1,5 +1,5 @@
 import { requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { notFound } from "next/navigation";
 import { getInvoiceById, getAllCompanies, getLegalEntities, getProjects } from "@/lib/data";
 import { InvoiceForm } from "../../invoice-form";

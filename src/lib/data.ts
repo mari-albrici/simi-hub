@@ -14,11 +14,11 @@ export async function readAll<T>(page: (from: number, to: number) => PromiseLike
 }
 const stringOrNull = (v: unknown) => typeof v === "string" ? v : null;
 export type CompanyRecord = {
-  id: string; business_name: string; company_type: CompanyType; vat_number: string | null; country: string | null;
+  id: string; business_name: string; esolver_code: string | null; company_type: CompanyType; vat_number: string | null; country: string | null;
   city: string | null; address: string | null; email: string | null; phone: string | null; iban: string | null; active: boolean;
 };
 function company(row: Record<string, unknown>): CompanyRecord {
-  return { id: String(row.id), business_name: String(row.business_name), company_type: row.company_type as CompanyType,
+  return { id: String(row.id), business_name: String(row.business_name), esolver_code: stringOrNull(row.esolver_code), company_type: row.company_type as CompanyType,
     vat_number: stringOrNull(row.vat_number), country: stringOrNull(row.country), city: stringOrNull(row.city), address: stringOrNull(row.address),
     email: stringOrNull(row.email), phone: stringOrNull(row.phone), iban: stringOrNull(row.iban), active: Boolean(row.active) };
 }

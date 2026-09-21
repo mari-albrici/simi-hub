@@ -1,4 +1,6 @@
 "use client";
+import { formatDate } from "@/lib/formatters";
+
 import { useActionState,useEffect,useState } from "react";
 import { saveCommercialAction,loadCompatibleOrders } from "@/lib/commercial-actions";
 import { commercialLabels,type CommercialKind } from "@/lib/commercial-validation";
@@ -37,7 +39,7 @@ export function CommercialForm({kind,options,record,projectId,source}:{kind:Comm
  </>:<>
  {field("departure_place","Luogo partenza")}{field("destination_place","Destinazione")}{field("transport_reason","Causale trasporto")}{field("carrier","Vettore")}
  {([['sender_id','Mittente'],['recipient_id','Destinatario']] as const).map(([name,label])=><div className="col-md-6" key={name}><label htmlFor={name} className="form-label">{label}</label><select id={name} name={name} defaultValue={value(name)} className="form-select"><option value="">Nessuno</option>{options.companies.map(c=><option key={c.id} value={c.id}>{c.business_name}</option>)}</select></div>)}
- <div className="col-12"><label htmlFor="order_ids" className="form-label">Ordini aggiuntivi (solo riferimento di intestazione)</label><select id="order_ids" name="order_ids" multiple className="form-select" defaultValue={record?.order_ids??(source?[source.id]:[])}>{choices.map(o=><option key={o.id} value={o.id}>{o.order_number} — {o.order_date} — {o.counterparty_name}</option>)}</select><small>Le quantità sono attribuite solo scegliendo la riga ordine nella tabella.</small></div>
+ <div className="col-12"><label htmlFor="order_ids" className="form-label">Ordini aggiuntivi (solo riferimento di intestazione)</label><select id="order_ids" name="order_ids" multiple className="form-select" defaultValue={record?.order_ids??(source?[source.id]:[])}>{choices.map(o=><option key={o.id} value={o.id}>{o.order_number} — {formatDate(o.order_date)} — {o.counterparty_name}</option>)}</select><small>Le quantità sono attribuite solo scegliendo la riga ordine nella tabella.</small></div>
  {loading&&<p role="status">Caricamento righe compatibili…</p>}{loadError&&<p className="alert alert-danger">{loadError}</p>}
  {source&&<p className="alert alert-info">Quantità residue proposte dall’ordine {source.order_number}. Modifica le quantità effettive e salva per confermare.</p>}
  </>}

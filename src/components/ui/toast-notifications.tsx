@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 type ToastItem = { id: number; kind: "success" | "error"; message: string };
 
 // Legge ?success= / ?error= dall'URL dopo un redirect di una server action, mostra un toast e ripulisce l'URL.
 export function ToastNotifications() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
@@ -29,7 +28,8 @@ export function ToastNotifications() {
     params.delete("success");
     params.delete("error");
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    // Only remove notification parameters; fetching the page again is unnecessary.
+    window.history.replaceState(null, "", `${query ? `${pathname}?${query}` : pathname}${window.location.hash}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

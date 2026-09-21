@@ -1,5 +1,5 @@
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { notFound } from "next/navigation";
 import { authorizedClient,requirePagePermission } from "@/lib/permissions";
 import { hasPermission } from "@/lib/auth";

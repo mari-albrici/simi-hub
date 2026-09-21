@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, startTransition } from "react";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { uploadDocumentAction,type UploadState } from "@/lib/upload";
 import { DocumentFields,ContextFields,type DocumentOptions } from "./document-fields";
 import { LoadingSpinner } from "@/components/ui/loading";

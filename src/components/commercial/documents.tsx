@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { authorizedClient,requirePagePermission } from "@/lib/permissions";
 import { hasPermission } from "@/lib/auth";
 import { readAll } from "@/lib/data";

@@ -1,6 +1,6 @@
 import { getCompaniesByType, getProfileDirectory, getLegalEntities, getAllCompanyContacts } from "@/lib/data";
 import { requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { createProjectAction } from "@/lib/crud";
 import { SubmitButton } from "@/components/ui/submit-button";
 

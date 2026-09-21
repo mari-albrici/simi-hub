@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/formatters";
 import { authorizedClient } from "@/lib/permissions";
 import { checkDatabase } from "@/lib/errors";
 import { readAll } from "@/lib/data";
@@ -31,4 +32,20 @@ export async function getInstallmentBalances(invoiceId: string) {
  const result=await db.from("financial_deadline_balances").select("installment_id,settled_amount,residual").eq("invoice_id",invoiceId);
  checkDatabase(result.error,"Lettura saldi rate");
  return new Map((result.data??[]).filter(r=>r.installment_id).map(r=>[String(r.installment_id),{paid:Number(r.settled_amount),residual:Number(r.residual)}]));
+}
+
+/** Labels only: keep the editable allocation payload unchanged. */
+export async function getMovementReferences(allocations: { invoice_id: string; installment_id?: string | null }[]) {
+ const invoices=new Map<string,string>(), installments=new Map<string,string>();
+ if (!allocations.length) return {invoices,installments};
+ const db=await authorizedClient("invoice.read");
+ const invoiceIds=[...new Set(allocations.map(a=>a.invoice_id))];
+ const installmentIds=[...new Set(allocations.flatMap(a=>a.installment_id?[a.installment_id]:[]))];
+ const [invoiceRows, installmentRows]=await Promise.all([
+  readAll((a,b)=>db.from("invoices").select("id,invoice_number").in("id",invoiceIds).order("id").range(a,b)),
+  installmentIds.length?readAll((a,b)=>db.from("invoice_installments").select("id,due_date").in("id",installmentIds).order("id").range(a,b)):Promise.resolve([]),
+ ]);
+ for(const row of invoiceRows)invoices.set(row.id,row.invoice_number);
+ for(const row of installmentRows)installments.set(row.id,formatDate(row.due_date));
+ return {invoices,installments};
 }

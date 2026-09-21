@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { notFound } from "next/navigation";
 import { requirePagePermission } from "@/lib/permissions";
 import { commercialOptions,getCommercial } from "@/lib/commercial";

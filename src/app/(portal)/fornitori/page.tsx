@@ -1,14 +1,20 @@
+import { CompanyFilters } from "@/components/ui/company-filters";
+import { filterCompanies } from "@/lib/company-filters";
+import { RowActionsMenu } from "@/components/ui/row-actions-menu";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { getAccessScope, requirePagePermission } from "@/lib/permissions";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { deleteCompanyAction } from "@/lib/crud";
-import { getCompaniesByType } from "@/lib/data";
+import { getCompaniesByType, getAllCompanyContacts } from "@/lib/data";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 
-export default async function SuppliersPage() {
+export default async function SuppliersPage({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}) {
   await requirePagePermission("company.read");
   const access = await getAccessScope("company");
-  const suppliers = await getCompaniesByType("supplier");
+  const [allCompanies, contacts] = await Promise.all([getCompaniesByType("supplier"), getAllCompanyContacts()]);
 
+  const p = await searchParams;
+  const suppliers = filterCompanies(allCompanies, p);
   return (
     <>
      <div className="d-flex justify-content-between align-items-center gap-3 mb-3 flex-wrap">
@@ -19,42 +25,33 @@ export default async function SuppliersPage() {
         {access.canCreate && <Link href="/fornitori/new" className="btn btn-dark">+ Nuovo fornitore</Link>}
       </div>
 
-      <div className="app-card p-3">
+      <CompanyFilters params={p} countries={[...new Set(allCompanies.map(c=>c.country).filter((c):c is string=>!!c))]} />
+      <div className="app-card">
         <div className="table-responsive">
-          <table className="table align-middle mb-0">
+          <table className="table table-admin align-middle mb-0">
             <thead>
               <tr>
-                <th>Ragione sociale</th>
-                <th>P. IVA</th>
-                <th>Paese</th>
-                <th>Email</th>
-                <th>Telefono</th>
-                <th>Attivo</th>
-                <th className="text-end">Azioni</th>
+                <th>Nome</th><th>Paese</th><th>P.IVA / identificativo</th><th>Referente</th><th>Stato</th><th className="col-actions"><span className="visually-hidden">Azioni</span></th>
               </tr>
             </thead>
             <tbody>
-              {suppliers.length === 0 && <tr><td colSpan={9} className="text-muted py-4">Nessun record presente.</td></tr>}
+              {suppliers.length === 0 && <tr><td colSpan={6} className="text-muted py-4">Nessun record presente.</td></tr>}
               {suppliers.map((supplier) => (
                 <tr key={supplier.id}>
-                  <td>
+                  <td className="col-description" title={supplier.business_name}>
                     <Link href={`/fornitori/${supplier.id}`} className="text-decoration-none fw-semibold text-dark">
                       {supplier.business_name}
                     </Link>
+                    {supplier.esolver_code && <div className="small text-muted text-truncate">eSolver {supplier.esolver_code}</div>}
                   </td>
-                  <td>{supplier.vat_number ?? "-"}</td>
-                  <td>{supplier.country ?? "-"}</td>
-                  <td>{supplier.email ?? "-"}</td>
-                  <td>{supplier.phone ?? "-"}</td>
-                  <td>
-                    <span className={`badge ${supplier.active ? "text-bg-success" : "text-bg-secondary"}`}>
-                      {supplier.active ? "Sì" : "No"}
-                    </span>
-                  </td>
-                  <td className="text-end">
-                    <div className="d-flex gap-2 justify-content-end">
-                      <Link href={`/fornitori/${supplier.id}`} className="btn btn-sm btn-outline-secondary">Visualizza</Link>
-                      {access.canUpdate && <Link href={`/fornitori/${supplier.id}/edit`} className="btn btn-sm btn-outline-secondary">Modifica</Link>}
+                  <td className="text-nowrap">{supplier.country ?? "—"}</td>
+                  <td className="col-description">{supplier.vat_number ?? "—"}</td>
+                  <td className="col-description">{contacts.filter(c=>c.company_id===supplier.id).map(c=>c.label).join(", ") || "—"}</td>
+                  <td className="col-status"><StatusBadge status={supplier.active ? "active" : "inactive"}/></td>
+                  <td className="col-actions">
+                    <RowActionsMenu label={`Azioni per ${supplier.business_name}`}>
+                      <Link href={`/fornitori/${supplier.id}`} className="dropdown-item">Visualizza</Link>
+                      {access.canUpdate && <Link href={`/fornitori/${supplier.id}/edit`} className="dropdown-item">Modifica</Link>}
                       {access.canDelete && <form action={async () => {
                         "use server";
                         await deleteCompanyAction(supplier.id, "supplier");
@@ -63,7 +60,7 @@ export default async function SuppliersPage() {
                           Archivia
                         </ConfirmSubmitButton>
                       </form>}
-                    </div>
+                    </RowActionsMenu>
                   </td>
                 </tr>
               ))}

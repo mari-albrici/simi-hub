@@ -1,3 +1,4 @@
+import { formatDate, formatMoney } from "@/lib/formatters";
 import type { Priority, TimeStatus } from "@/types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -50,14 +51,11 @@ export function mapDeadlinePriority(priority: string): Priority {
 }
 
 export function formatCurrencyEUR(value: number): string {
-  return value.toLocaleString("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  return formatMoney(value);
 }
 
 export function formatDateIT(value: string | null | undefined): string {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("it-IT");
+  return formatDate(value);
 }
 
 export function formatFileSize(bytes: number | null | undefined): string {

@@ -1,12 +1,11 @@
+import { formatMoney } from "@/lib/formatters";
 import { requirePagePermission } from "@/lib/permissions";
 import { getReportSummary } from "@/lib/data";
 
 export default async function ReportPage() {
   await requirePagePermission("report.read");
   const summary = await getReportSummary();
-  const totalInvoicesLabel = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(
-    summary.totalInvoicesAmount,
-  );
+  const totalInvoicesLabel = formatMoney(summary.totalInvoicesAmount);
 
   return (
     <>

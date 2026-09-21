@@ -24,7 +24,7 @@ export type DashboardKpis = {
 };
 
 export type ProjectStatusPoint = {
-  status: "ACTIVE" | "DRAFT";
+  status: "active" | "draft";
   label: string;
   count: number;
 };
@@ -206,17 +206,17 @@ export async function getDashboardData(): Promise<DashboardData> {
 
 const projectStatus: ProjectStatusPoint[] = [
   {
-    status: "ACTIVE",
+    status: "active",
     label: "Attive",
     count: (projectData ?? []).filter(
-      (project) => project.status === "ACTIVE"
+      (project) => project.status === "active"
     ).length,
   },
   {
-    status: "DRAFT",
+    status: "draft",
     label: "Bozze",
     count: (projectData ?? []).filter(
-      (project) => project.status === "DRAFT"
+      (project) => project.status === "draft"
     ).length,
   },
 ];

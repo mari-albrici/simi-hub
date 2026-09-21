@@ -33,7 +33,7 @@ export function CashFlowChart({
   }
 
   return (
-    <div style={{ width: "100%", height: 300 }}>
+    <div style={{ width: "100%", height: 220 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}

@@ -10,7 +10,6 @@ import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { FinancialSummary } from "@/components/dashboard/financial-summary";
 import { CashFlowChart } from "@/components/dashboard/cash-flow-chart";
 import { ProjectsStatusChart } from "@/components/dashboard/projects-status-chart";
-import { FinancialBalanceChart } from "@/components/dashboard/financial-balance-chart";
 import { ProjectsAttentionList } from "@/components/dashboard/projects-attention-list";
 
 import { WorkAttention } from "@/components/work/dashboard-attention";
@@ -24,9 +23,7 @@ function kpiValue(kpi: {
 
   return values.length
     ? values
-        .map(([currency, amount]) =>
-          formatMoney(amount, currency)
-        )
+        .map(([currency, amount]) => formatMoney(amount, currency))
         .join(" · ")
     : formatCurrencyEUR(0);
 }
@@ -43,24 +40,42 @@ export default async function DashboardPage() {
     data.kpis.payableOverdue.count +
     data.kpis.receivableOverdue.count;
 
+  const totalInflow = data.cashFlow.reduce(
+    (sum, point) => sum + point.inflow,
+    0
+  );
+
+  const totalOutflow = data.cashFlow.reduce(
+    (sum, point) => sum + point.outflow,
+    0
+  );
+
+  const expectedBalance = totalInflow - totalOutflow;
+
+  const totalAttention =
+    work.count + data.kpis.deadlinesNext7;
+
   return (
     <>
       {/* =====================================================
           HEADER
       ====================================================== */}
 
-      <div className="mb-4">
-        <h1 className="h2 mb-1">Dashboard</h1>
+      <div className="dashboard-header mb-4">
+        <div>
+          <div className="dashboard-eyebrow mb-1">
+            PANORAMICA GENERALE
+          </div>
 
-        <p className="text-muted mb-0">
-          Panoramica amministrativa e operativa
-        </p>
+          <h1 className="dashboard-title mb-1">
+            Dashboard
+          </h1>
+
+          <p className="text-muted mb-0">
+            Situazione amministrativa, finanziaria e operativa
+          </p>
+        </div>
       </div>
-
-
-      {/* =====================================================
-          STATO DATI
-      ====================================================== */}
 
       {!data.configured ? (
         <div className="app-card p-4 mb-4">
@@ -68,7 +83,7 @@ export default async function DashboardPage() {
         </div>
       ) : data.error ? (
         <div className="app-card p-4 mb-4">
-          <DashboardEmptyState message="Non è stato possibile caricare alcuni dati della dashboard. Riprova più tardi." />
+          <DashboardEmptyState message="Non è stato possibile caricare alcuni dati della dashboard." />
         </div>
       ) : null}
 
@@ -77,334 +92,522 @@ export default async function DashboardPage() {
           KPI
       ====================================================== */}
 
-      <div className="row g-3 mb-5">
+      <section className="mb-5">
+        <div className="row g-3">
 
-        <div className="col-sm-6 col-xl-3">
-          <DashboardKpiCard
-            label="Da pagare"
-            value={kpiValue(data.kpis.payable)}
-            sublabel={`${data.kpis.payable.count} scadenze aperte`}
-            tone="primary"
-            href="/scadenze?kind=payment&status=open"
-          />
-        </div>
-
-        <div className="col-sm-6 col-xl-3">
-          <DashboardKpiCard
-            label="Da incassare"
-            value={kpiValue(data.kpis.receivable)}
-            sublabel={`${data.kpis.receivable.count} scadenze aperte`}
-            tone="primary"
-            href="/scadenze?kind=receipt&status=open"
-          />
-        </div>
-
-        <div className="col-sm-6 col-xl-3">
-          <DashboardKpiCard
-            label="Scaduto"
-            value={String(totalOverdue)}
-            sublabel={`${data.kpis.payableOverdue.count} fornitori · ${data.kpis.receivableOverdue.count} clienti`}
-            tone={
-              totalOverdue > 0
-                ? "danger"
-                : "secondary"
-            }
-            href="/scadenze?status=overdue"
-          />
-        </div>
-
-        <div className="col-sm-6 col-xl-3">
-          <DashboardKpiCard
-            label="Prossimi 7 giorni"
-            value={String(data.kpis.deadlinesNext7)}
-            sublabel="scadenze in arrivo"
-            tone={
-              data.kpis.deadlinesNext7 > 0
-                ? "warning"
-                : "secondary"
-            }
-            href="/scadenze?period=7"
-          />
-        </div>
-
-      </div>
-
-
-      {/* =====================================================
-          PANORAMICA FINANZIARIA
-      ====================================================== */}
-
-      <div className="mb-3">
-        <h2 className="h4 mb-1">
-          Panoramica finanziaria
-        </h2>
-
-        <p className="small text-muted mb-0">
-          Entrate, uscite e situazione prevista
-        </p>
-      </div>
-
-
-      <div className="row g-4 mb-5">
-
-        {/* CASH FLOW */}
-
-        <div className="col-xl-8">
-          <div className="app-card p-4 h-100">
-
-            <div className="mb-4">
-              <h3 className="h5 mb-1">
-                Flusso di cassa previsto
-              </h3>
-
-              <div className="small text-muted">
-                Entrate e uscite previste nei prossimi 90 giorni
-              </div>
-            </div>
-
-            <CashFlowChart data={data.cashFlow} />
-
-          </div>
-        </div>
-
-
-        {/* SALDO */}
-
-        <div className="col-xl-4">
-          <div className="app-card p-4 h-100">
-
-            <div className="mb-4">
-              <h3 className="h5 mb-1">
-                Saldo previsto
-              </h3>
-
-              <div className="small text-muted">
-                Differenza tra entrate e uscite
-              </div>
-            </div>
-
-            <FinancialBalanceChart
-              data={data.financialBalance}
+          <div className="col-sm-6 col-xl-3">
+            <DashboardKpiCard
+              label="Da pagare"
+              value={kpiValue(data.kpis.payable)}
+              sublabel={`${data.kpis.payable.count} scadenze aperte`}
+              tone="primary"
+              href="/scadenze?kind=payment&status=open"
             />
-
           </div>
-        </div>
 
-      </div>
+          <div className="col-sm-6 col-xl-3">
+            <DashboardKpiCard
+              label="Da incassare"
+              value={kpiValue(data.kpis.receivable)}
+              sublabel={`${data.kpis.receivable.count} scadenze aperte`}
+              tone="primary"
+              href="/scadenze?kind=receipt&status=open"
+            />
+          </div>
+
+          <div className="col-sm-6 col-xl-3">
+            <DashboardKpiCard
+              label="Scaduto"
+              value={String(totalOverdue)}
+              sublabel={`${data.kpis.payableOverdue.count} fornitori · ${data.kpis.receivableOverdue.count} clienti`}
+              tone={totalOverdue > 0 ? "danger" : "secondary"}
+              href="/scadenze?status=overdue"
+            />
+          </div>
+
+          <div className="col-sm-6 col-xl-3">
+            <DashboardKpiCard
+              label="Da gestire"
+              value={String(totalAttention)}
+              sublabel={`${work.count} attività · ${data.kpis.deadlinesNext7} scadenze`}
+              tone={totalAttention > 0 ? "warning" : "secondary"}
+              href="/attivita"
+            />
+          </div>
+
+        </div>
+      </section>
 
 
       {/* =====================================================
-          SITUAZIONE COMMESSE
+          FINANZE
       ====================================================== */}
 
-      <div className="mb-3">
-        <h2 className="h4 mb-1">
-          Situazione commesse
-        </h2>
+      <section className="mb-5">
 
-        <p className="small text-muted mb-0">
-          Stato e criticità delle commesse
-        </p>
-      </div>
+        <div className="dashboard-section-heading">
+          <div>
+            <h2 className="dashboard-section-title">
+              Panoramica finanziaria
+            </h2>
+
+            <p className="dashboard-section-subtitle">
+              Flussi previsti e posizioni che richiedono attenzione
+            </p>
+          </div>
+
+          <Link
+            href="/scadenze"
+            className="dashboard-section-link"
+          >
+            Gestisci scadenze
+            <i className="bi bi-arrow-right ms-2" />
+          </Link>
+        </div>
 
 
-      <div className="row g-4 mb-5">
+        <div className="row g-4">
 
-        {/* STATO COMMESSE */}
+          {/* CASH FLOW */}
 
-        <div className="col-xl-4">
-          <div className="app-card p-4 h-100">
+          <div className="col-xl-9">
 
-            <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div className="app-card dashboard-feature-card h-100">
 
-              <div>
-                <h3 className="h5 mb-1">
-                  Commesse
-                </h3>
+              <div className="dashboard-card-header">
+                <div>
+                  <div className="dashboard-card-eyebrow">
+                    CASH FLOW
+                  </div>
 
-                <div className="small text-muted">
-                  Attive e bozze
+                  <h3 className="dashboard-card-title">
+                    Flusso di cassa previsto
+                  </h3>
                 </div>
+
+                <span className="dashboard-period-badge">
+                  Prossimi 90 giorni
+                </span>
               </div>
 
-              <Link
-                href="/commesse"
-                className="small text-decoration-none"
-              >
-                Vedi tutte
-              </Link>
 
-            </div>
+              {/* TOTALI */}
 
-            <ProjectsStatusChart
-              data={data.projectStatus}
-            />
+              <div className="dashboard-financial-metrics">
 
-          </div>
-        </div>
+                <div className="dashboard-financial-metric">
+                  <span className="dashboard-metric-dot dashboard-dot-success" />
 
+                  <div>
+                    <div className="dashboard-metric-label">
+                      Entrate previste
+                    </div>
 
-        {/* COMMESSE DA CONTROLLARE */}
-
-        <div className="col-xl-8">
-          <div className="app-card p-4 h-100">
-
-            <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
-
-              <div>
-                <h3 className="h5 mb-1">
-                  Commesse da controllare
-                </h3>
-
-                <div className="small text-muted">
-                  Elementi che richiedono verifica
+                    <div className="dashboard-metric-value">
+                      {formatCurrencyEUR(totalInflow)}
+                    </div>
+                  </div>
                 </div>
+
+
+                <div className="dashboard-financial-metric">
+                  <span className="dashboard-metric-dot dashboard-dot-danger" />
+
+                  <div>
+                    <div className="dashboard-metric-label">
+                      Uscite previste
+                    </div>
+
+                    <div className="dashboard-metric-value">
+                      {formatCurrencyEUR(totalOutflow)}
+                    </div>
+                  </div>
+                </div>
+
+
+                <div className="dashboard-financial-metric">
+                  <div>
+                    <div className="dashboard-metric-label">
+                      Saldo previsto
+                    </div>
+
+                    <div
+                      className={`dashboard-metric-value ${
+                        expectedBalance >= 0
+                          ? "text-success"
+                          : "text-danger"
+                      }`}
+                    >
+                      {expectedBalance > 0 ? "+" : ""}
+                      {formatCurrencyEUR(expectedBalance)}
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
-              <Link
-                href="/commesse"
-                className="small text-decoration-none"
-              >
-                Tutte le commesse
-                <i
-                  className="bi bi-arrow-right ms-1"
-                  aria-hidden="true"
-                />
-              </Link>
+
+              <div className="dashboard-chart-area">
+                <CashFlowChart data={data.cashFlow} />
+              </div>
 
             </div>
 
-            <ProjectsAttentionList
-              projects={data.projectsAttention}
-            />
-
           </div>
-        </div>
-
-      </div>
 
 
-      {/* =====================================================
-          DA FARE
-      ====================================================== */}
+          {/* SCADUTO */}
 
-      <div className="mb-3">
-        <h2 className="h4 mb-1">
-          Da gestire
-        </h2>
+          <div className="col-xl-3">
 
-        <p className="small text-muted mb-0">
-          Scadenze, attività e anomalie che richiedono attenzione
-        </p>
-      </div>
+            <div
+              className={`app-card dashboard-overdue-card h-100 ${
+                totalOverdue > 0
+                  ? "dashboard-overdue-card-active"
+                  : ""
+              }`}
+            >
 
+              <div className="dashboard-overdue-icon">
+                <i className="bi bi-exclamation-lg" />
+              </div>
 
-      <div className="row g-4 mb-5">
+              <div className="dashboard-card-eyebrow">
+                DA CONTROLLARE
+              </div>
 
-        {/* SCADENZE */}
-
-        <div className="col-xl-5">
-          <div className="app-card p-4 h-100">
-
-            <div className="d-flex justify-content-between align-items-center gap-3 mb-3">
-
-              <h3 className="h5 mb-0">
-                Prossime scadenze
+              <h3 className="dashboard-card-title mb-4">
+                Scaduto
               </h3>
 
-              <Link
-                href="/scadenze"
-                className="small text-decoration-none"
-              >
-                Vedi tutte
-                <i
-                  className="bi bi-arrow-right ms-1"
-                  aria-hidden="true"
-                />
-              </Link>
 
-            </div>
+              <div className="dashboard-overdue-block">
 
-            <UpcomingDeadlines
-              items={data.upcomingDeadlines}
-            />
+                <div className="dashboard-overdue-label">
+                  Da pagare
+                </div>
 
-          </div>
-        </div>
+                <div className="dashboard-overdue-value">
+                  {kpiValue(data.kpis.payableOverdue)}
+                </div>
 
+                <div className="dashboard-overdue-meta">
+                  {data.kpis.payableOverdue.count} posizioni
+                </div>
 
-        {/* ATTIVITÀ */}
-
-        <div className="col-xl-7">
-          <div className="app-card p-4 h-100">
-
-            <div className="d-flex justify-content-between align-items-center gap-3 mb-3">
-
-              <div className="d-flex align-items-center gap-2">
-                <h3 className="h5 mb-0">
-                  Attività e anomalie
-                </h3>
-
-                {work.count > 0 && (
-                  <span className="badge rounded-pill text-bg-warning">
-                    {work.count}
-                  </span>
-                )}
               </div>
 
+
+              <div className="dashboard-overdue-divider" />
+
+
+              <div className="dashboard-overdue-block">
+
+                <div className="dashboard-overdue-label">
+                  Da incassare
+                </div>
+
+                <div className="dashboard-overdue-value">
+                  {kpiValue(data.kpis.receivableOverdue)}
+                </div>
+
+                <div className="dashboard-overdue-meta">
+                  {data.kpis.receivableOverdue.count} posizioni
+                </div>
+
+              </div>
+
+
               <Link
-                href="/attivita"
-                className="small text-decoration-none"
+                href="/scadenze?status=overdue"
+                className="dashboard-card-action mt-auto"
               >
-                Vedi tutte
+                Vedi tutte le posizioni
+                <i className="bi bi-arrow-right" />
               </Link>
 
             </div>
 
-            <WorkAttention data={work} />
-
           </div>
+
         </div>
 
-      </div>
+      </section>
 
 
       {/* =====================================================
-          CLIENTI / FORNITORI
+          COMMESSE
       ====================================================== */}
 
-      <div className="mb-3">
-        <h2 className="h4 mb-1">
-          Situazione contabile
-        </h2>
+      <section className="mb-5">
 
-        <p className="small text-muted mb-0">
-          Riepilogo delle posizioni aperte
-        </p>
-      </div>
+        <div className="dashboard-section-heading">
 
+          <div>
+            <h2 className="dashboard-section-title">
+              Commesse
+            </h2>
 
-      <div className="row g-4">
-
-        <div className="col-lg-6">
-          <div className="app-card p-4 h-100">
-            <FinancialSummary
-              title="Fornitori"
-              bucket={data.supplierSummary}
-            />
+            <p className="dashboard-section-subtitle">
+              Stato generale e situazioni da verificare
+            </p>
           </div>
+
+          <Link
+            href="/commesse"
+            className="dashboard-section-link"
+          >
+            Tutte le commesse
+            <i className="bi bi-arrow-right ms-2" />
+          </Link>
+
         </div>
 
-        <div className="col-lg-6">
-          <div className="app-card p-4 h-100">
-            <FinancialSummary
-              title="Clienti"
-              bucket={data.customerSummary}
-            />
+
+        <div className="row g-4">
+
+          <div className="col-xl-4">
+
+            <div className="app-card dashboard-standard-card h-100">
+
+              <div className="dashboard-card-header">
+
+                <div>
+                  <div className="dashboard-card-eyebrow">
+                    PORTAFOGLIO
+                  </div>
+
+                  <h3 className="dashboard-card-title">
+                    Stato commesse
+                  </h3>
+                </div>
+
+              </div>
+
+              <ProjectsStatusChart
+                data={data.projectStatus}
+              />
+
+            </div>
+
           </div>
+
+
+          <div className="col-xl-8">
+
+            <div className="app-card dashboard-standard-card h-100">
+
+              <div className="dashboard-card-header">
+
+                <div>
+                  <div className="dashboard-card-eyebrow">
+                    ATTENZIONE
+                  </div>
+
+                  <h3 className="dashboard-card-title">
+                    Commesse da controllare
+                  </h3>
+
+                  <p className="dashboard-card-description">
+                    Fatture, documenti e scadenze che richiedono verifica
+                  </p>
+                </div>
+
+              </div>
+
+              <ProjectsAttentionList
+                projects={data.projectsAttention}
+              />
+
+            </div>
+
+          </div>
+
         </div>
 
-      </div>
+      </section>
+
+
+      {/* =====================================================
+          DA GESTIRE
+      ====================================================== */}
+
+      <section className="mb-5">
+
+        <div className="dashboard-section-heading">
+
+          <div>
+            <div className="d-flex align-items-center gap-2">
+
+              <h2 className="dashboard-section-title mb-0">
+                Da gestire
+              </h2>
+
+              {totalAttention > 0 && (
+                <span className="dashboard-attention-count">
+                  {totalAttention}
+                </span>
+              )}
+
+            </div>
+
+            <p className="dashboard-section-subtitle">
+              Priorità operative e prossime scadenze
+            </p>
+          </div>
+
+        </div>
+
+
+        <div className="row g-4">
+
+          {/* SCADENZE */}
+
+          <div className="col-xl-5">
+
+            <div className="app-card dashboard-standard-card h-100">
+
+              <div className="dashboard-card-header">
+
+                <div>
+                  <div className="dashboard-card-eyebrow">
+                    CALENDARIO
+                  </div>
+
+                  <h3 className="dashboard-card-title">
+                    Prossime scadenze
+                  </h3>
+                </div>
+
+                <Link
+                  href="/scadenze"
+                  className="dashboard-card-link"
+                >
+                  Vedi tutte
+                </Link>
+
+              </div>
+
+              <UpcomingDeadlines
+                items={data.upcomingDeadlines}
+              />
+
+            </div>
+
+          </div>
+
+
+          {/* ATTIVITÀ */}
+
+          <div className="col-xl-7">
+
+            <div className="app-card dashboard-standard-card h-100">
+
+              <div className="dashboard-card-header">
+
+                <div>
+
+                  <div className="dashboard-card-eyebrow">
+                    PRIORITÀ
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2">
+
+                    <h3 className="dashboard-card-title mb-0">
+                      Richiede attenzione
+                    </h3>
+
+                    {work.count > 0 && (
+                      <span className="dashboard-warning-badge">
+                        {work.count}
+                      </span>
+                    )}
+
+                  </div>
+
+                </div>
+
+                <Link
+                  href="/attivita"
+                  className="dashboard-card-link"
+                >
+                  Vedi tutte
+                </Link>
+
+              </div>
+
+              <WorkAttention data={work} />
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      {/* =====================================================
+          SITUAZIONE CONTABILE
+      ====================================================== */}
+
+      <section>
+
+        <div className="dashboard-section-heading">
+
+          <div>
+            <h2 className="dashboard-section-title">
+              Situazione contabile
+            </h2>
+
+            <p className="dashboard-section-subtitle">
+              Posizioni aperte clienti e fornitori
+            </p>
+          </div>
+
+        </div>
+
+
+        <div className="row g-4">
+
+          <div className="col-lg-6">
+
+            <div className="app-card dashboard-accounting-card h-100">
+
+              <div className="dashboard-card-eyebrow mb-3">
+                FORNITORI
+              </div>
+
+              <FinancialSummary
+                title=""
+                bucket={data.supplierSummary}
+              />
+
+            </div>
+
+          </div>
+
+
+          <div className="col-lg-6">
+
+            <div className="app-card dashboard-accounting-card h-100">
+
+              <div className="dashboard-card-eyebrow mb-3">
+                CLIENTI
+              </div>
+
+              <FinancialSummary
+                title=""
+                bucket={data.customerSummary}
+              />
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
     </>
   );
 }

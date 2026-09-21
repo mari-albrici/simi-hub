@@ -48,54 +48,74 @@ export default async function PortalLayout({ children }: Readonly<{ children: Re
 
       <div className="portal-content flex-grow-1 d-flex flex-column">
         <div id="navigation-feedback" aria-live="polite" />
-        <header className="topbar px-4 py-3 d-flex align-items-center justify-content-between gap-3">
-          <div className="d-flex align-items-center gap-3">
-            <MobileMenuButton />
-          </div>
-
-          <div className="flex-grow-1" />
-
-          <div className="d-flex align-items-center gap-3">
-  <CurrentDateTime />
-
-  <div className="dropdown">
-    <button
-      className="btn p-0 border-0 dropdown-toggle user-avatar-dropdown"
-      type="button"
-      data-bs-toggle="dropdown"
-      aria-expanded="false"
-      aria-label={`Menu utente ${sessionUser.name}`}
-    >
-      <span className="user-avatar">
-        {sessionUser.name
-          .trim()
-          .split(/\s+/)
-          .slice(0, 2)
-          .map((word) => word[0])
-          .join("")
-          .toUpperCase()}
-      </span>
-    </button>
-
-    <ul className="dropdown-menu dropdown-menu-end">
-      <li>
-        <hr className="dropdown-divider" />
-      </li>
-      <li>
-        <form action={logoutAction}>
-          <SubmitButton
-            className="dropdown-item text-start"
-            pendingLabel="Uscita…"
-          >
-            Logout
-          </SubmitButton>
-        </form>
-      </li>
-    </ul>
+<header className="topbar px-3 px-lg-4 py-3 d-flex align-items-center gap-3">
+  {/* Sinistra: hamburger mobile */}
+  <div className="topbar-left d-flex align-items-center">
+    <MobileMenuButton />
   </div>
-</div>
-        </header>
 
+  {/* Centro: logo solo mobile */}
+  <Link
+    href="/dashboard"
+    className="topbar-mobile-logo d-lg-none"
+    aria-label="SIMI Hub home"
+  >
+<Image
+  src="/images/branding/LogoSimi.png"
+  alt="SIMI"
+  width={125}
+  height={65}
+  priority
+  style={{
+    objectFit: "contain",
+    width: "auto",
+    height: "65px",
+  }}
+/>
+  </Link>
+
+  {/* Destra: data/ora + profilo */}
+  <div className="topbar-right d-flex align-items-center gap-3 ms-auto">
+    <CurrentDateTime />
+
+    <div className="dropdown">
+      <button
+        className="btn p-0 border-0 dropdown-toggle user-avatar-dropdown"
+        type="button"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+        aria-label={`Menu utente ${sessionUser.name}`}
+      >
+        <span className="user-avatar">
+          {sessionUser.name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((word) => word[0])
+            .join("")
+            .toUpperCase()}
+        </span>
+      </button>
+
+      <ul className="dropdown-menu dropdown-menu-end">
+        <li>
+          <hr className="dropdown-divider" />
+        </li>
+
+        <li>
+          <form action={logoutAction}>
+            <SubmitButton
+              className="dropdown-item text-start"
+              pendingLabel="Uscita…"
+            >
+              Logout
+            </SubmitButton>
+          </form>
+        </li>
+      </ul>
+    </div>
+  </div>
+</header>
         <div className="offcanvas offcanvas-start sidebar" tabIndex={-1} id="mobileSidebar" aria-labelledby="mobileMenuTitle">
           <MobileNavigationClose />
           <div className="offcanvas-header border-bottom"><span id="mobileMenuTitle" className="visually-hidden">Menu principale</span>

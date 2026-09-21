@@ -1,11 +1,12 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   Cell,
   Pie,
   PieChart,
   ResponsiveContainer,
-  Tooltip,
 } from "recharts";
 
 import type { ProjectStatusPoint } from "@/lib/dashboard";
@@ -22,12 +23,15 @@ export function ProjectsStatusChart({
   );
 
   const active =
-    data.find((item) => item.status === "ACTIVE")?.count ?? 0;
+    data.find((item) => item.label === "Attive")?.count ?? 0;
 
   const colors: Record<string, string> = {
-    ACTIVE: "var(--simi-success)",
-    DRAFT: "var(--bs-secondary)",
+    active: "#198754",
+    draft: "#adb5bd",
   };
+
+  const [hoveredItem, setHoveredItem] =
+    useState<ProjectStatusPoint | null>(null);
 
   if (total === 0) {
     return (
@@ -36,10 +40,37 @@ export function ProjectsStatusChart({
   }
 
   return (
-    <div>
+    <div className="position-relative">
+
+      {/* TOOLTIP ESTERNO */}
+
+      <div
+        className={`project-chart-tooltip ${
+          hoveredItem ? "project-chart-tooltip-visible" : ""
+        }`}
+      >
+        {hoveredItem && (
+          <>
+            <div className="project-chart-tooltip-label">
+              {hoveredItem.label}
+            </div>
+
+            <div className="project-chart-tooltip-value">
+              {hoveredItem.count}{" "}
+              {hoveredItem.count === 1
+                ? "commessa"
+                : "commesse"}
+            </div>
+          </>
+        )}
+      </div>
+
+
+      {/* DONUT */}
+
       <div
         className="position-relative"
-        style={{ height: 240 }}
+        style={{ height: 220 }}
       >
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -47,41 +78,64 @@ export function ProjectsStatusChart({
               data={data}
               dataKey="count"
               nameKey="label"
-              innerRadius="68%"
+              innerRadius="66%"
               outerRadius="90%"
               paddingAngle={3}
               stroke="none"
+              onMouseEnter={(_, index) => {
+                setHoveredItem(data[index]);
+              }}
+              onMouseLeave={() => {
+                setHoveredItem(null);
+              }}
             >
               {data.map((item) => (
                 <Cell
                   key={item.status}
                   fill={colors[item.status]}
+                  style={{
+                    cursor: "pointer",
+                  }}
                 />
               ))}
             </Pie>
-
-            <Tooltip
-              formatter={(value, _name, item) => [
-                `${Number(value)} commesse`,
-                item.payload.label,
-              ]}
-            />
           </PieChart>
         </ResponsiveContainer>
 
+
+        {/* CENTRO */}
+
         <div
           className="position-absolute top-50 start-50 translate-middle text-center"
-          style={{ pointerEvents: "none" }}
+          style={{
+            pointerEvents: "none",
+          }}
         >
-          <div className="h2 fw-semibold mb-0">
+          <div
+            className="fw-bold lh-1"
+            style={{
+              fontSize: "2rem",
+              letterSpacing: "-0.04em",
+            }}
+          >
             {active}
           </div>
 
-          <div className="small text-muted">
+          <div
+            className="text-muted text-uppercase mt-1"
+            style={{
+              fontSize: "0.65rem",
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+            }}
+          >
             attive
           </div>
         </div>
       </div>
+
+
+      {/* LEGENDA */}
 
       <div className="d-flex justify-content-center flex-wrap gap-4 mt-2">
         {data.map((item) => (
@@ -109,9 +163,6 @@ export function ProjectsStatusChart({
         ))}
       </div>
 
-      <div className="text-center small text-muted mt-3">
-        {total} commesse complessive
-      </div>
     </div>
   );
 }

@@ -122,7 +122,11 @@ export async function getInvoices(filter?: InvoiceFilter) {
     if (filter?.legal_entity_id) query = query.eq("legal_entity_id", uuidSchema.parse(filter.legal_entity_id));
     if (filter?.company_id) query = filter.type === "sale" ? query.eq("customer_id", uuidSchema.parse(filter.company_id)) : filter.type === "purchase" ? query.eq("supplier_id", uuidSchema.parse(filter.company_id)) : query.or(`supplier_id.eq.${filter.company_id},customer_id.eq.${filter.company_id}`);
     if (projectInvoiceIds) query = query.in("id", projectInvoiceIds);
-    if (filter?.search) query = query.ilike("invoice_number", `%${filter.search.replace(/[%_]/g, "\\$&")}%`);
+    if (filter?.search) {
+      // Quote the PostgREST value so punctuation in identifiers stays literal.
+      const pattern = JSON.stringify(`%${filter.search.replace(/[%_\\]/g, "\\$&")}%`);
+      query = query.or(`invoice_number.ilike.${pattern},esolver_registration_number.ilike.${pattern}`);
+    }
     if (filter?.esolver_registration_number) query = query.ilike("esolver_registration_number", `%${filter.esolver_registration_number.replace(/[%_]/g, "\\$&")}%`);
     if (filter?.date_from) query = query.gte("invoice_date", filter.date_from);
     if (filter?.date_to) query = query.lte("invoice_date", filter.date_to);

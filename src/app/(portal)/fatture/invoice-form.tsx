@@ -400,7 +400,7 @@ export function InvoiceForm({
               ))}
             </select>
           </div>
-          <div className="col-md-3"><label className="form-label">Prog. eSolver</label><input name="esolver_registration_number_visible" className="form-control" value={esolverRegistrationNumber} onChange={(event) => setEsolverRegistrationNumber(event.target.value)} maxLength={120} /></div>
+          <div className="col-md-3"><label className="form-label" htmlFor="esolver-registration-number">Progressivo eSolver</label><input id="esolver-registration-number" aria-describedby="esolver-registration-help" name="esolver_registration_number_visible" className="form-control" value={esolverRegistrationNumber} onChange={(event) => setEsolverRegistrationNumber(event.target.value)} maxLength={120} /><div id="esolver-registration-help" className="form-text">Numero progressivo assegnato alla registrazione della fattura in eSolver.</div></div>
 
           <div className="col-md-4">
             <label className="form-label">Data fattura</label>

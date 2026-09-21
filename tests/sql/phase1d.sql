@@ -59,6 +59,22 @@ DO $$ DECLARE payload jsonb; d record; v record; pending record; original uuid; 
  INSERT INTO storage.objects(bucket_id,name) VALUES('simi-documents',v.storage_path);PERFORM public.finalize_document_version(v.version_id);
  PERFORM set_config('test.restricted_doc',v.document_id::text,true);
 END $$;
+-- Notes use the existing metadata API without rewriting other fields.
+DO $$ DECLARE doc uuid:=current_setting('test.doc')::uuid; before_row jsonb; after_row jsonb; events bigint; BEGIN
+ SELECT to_jsonb(d) INTO before_row FROM public.documents d WHERE id=doc;
+ SELECT count(*) INTO events FROM public.document_events(doc);
+ PERFORM public.save_document_metadata(doc,jsonb_build_object('notes',E'Prima riga\nSeconda riga','expected_updated_at',before_row->>'updated_at'));
+ SELECT to_jsonb(d) INTO after_row FROM public.documents d WHERE id=doc;
+ IF after_row->>'notes' IS DISTINCT FROM E'Prima riga\nSeconda riga' OR before_row-'notes'-'updated_at' IS DISTINCT FROM after_row-'notes'-'updated_at' THEN RAISE EXCEPTION 'notes changed other metadata'; END IF;
+ IF (SELECT count(*) FROM public.document_events(doc))<=events THEN RAISE EXCEPTION 'notes audit missing'; END IF;
+ BEGIN PERFORM public.save_document_metadata(doc,jsonb_build_object('notes','stale','expected_updated_at','2000-01-01T00:00:00Z')); RAISE EXCEPTION 'stale notes accepted'; EXCEPTION WHEN serialization_failure THEN NULL; END;
+ BEGIN PERFORM public.save_document_metadata(doc,jsonb_build_object('notes',repeat('x',10001))); RAISE EXCEPTION 'oversized notes accepted'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ PERFORM public.save_document_metadata(doc,'{"notes":""}');
+ IF (SELECT notes FROM public.documents WHERE id=doc) IS NOT NULL THEN RAISE EXCEPTION 'empty note not null'; END IF;
+ PERFORM public.set_document_archive(doc,true);
+ BEGIN PERFORM public.save_document_metadata(doc,'{"notes":"archived"}'); RAISE EXCEPTION 'archived notes accepted'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM public.set_document_archive(doc,false);
+END $$;
 -- Exercise the actual phase1 invoice RPC with an existing shared document.
 DO $$ DECLARE inv uuid; entity uuid; payload jsonb; pending record; BEGIN
  SELECT id INTO entity FROM public.legal_entities WHERE code='SIMI-IT';
@@ -82,6 +98,7 @@ END $$;
 SELECT set_config('request.jwt.claim.sub','12000000-0000-4000-8000-000000000002',true);
 DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM public.document_register WHERE id IN (current_setting('test.hr_doc')::uuid,current_setting('test.restricted_doc')::uuid)) OR EXISTS(SELECT 1 FROM public.document_versions WHERE content_hash=repeat('c',64)) OR EXISTS(SELECT 1 FROM public.operational_deadlines WHERE id='document:'||current_setting('test.hr_doc')) OR EXISTS(SELECT 1 FROM public.document_events(current_setting('test.hr_doc')::uuid)) OR public.document_storage_access(current_setting('test.hr_path'),'read') THEN RAISE EXCEPTION 'HR/privacy leaked'; END IF;
+ BEGIN PERFORM public.save_document_metadata(current_setting('test.doc')::uuid,'{"notes":"unauthorized"}'); RAISE EXCEPTION 'viewer updated notes'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN UPDATE public.document_versions SET original_filename='forged.pdf'; RAISE EXCEPTION 'version mutable'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  IF NOT EXISTS(SELECT 1 FROM public.document_register WHERE id=current_setting('test.doc')::uuid) THEN RAISE EXCEPTION 'viewer cannot read'; END IF;
  BEGIN PERFORM public.reserve_document('deny.pdf','application/pdf',100,NULL);RAISE EXCEPTION 'viewer upload allowed';EXCEPTION WHEN insufficient_privilege THEN NULL;END;

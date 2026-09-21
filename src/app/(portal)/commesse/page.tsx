@@ -25,6 +25,62 @@ const labels: Record<string, string> = {
 type SortField = "project_code" | "customer" | "status";
 type SortDirection = "asc" | "desc";
 
+const countryCodes: Record<string, string> = {
+  italia: "ITA",
+  italy: "ITA",
+
+  francia: "FRA",
+  france: "FRA",
+
+  belgio: "BEL",
+  belgium: "BEL",
+  belgique: "BEL",
+
+  lussemburgo: "LUX",
+  luxembourg: "LUX",
+
+  germania: "DEU",
+  germany: "DEU",
+  allemagne: "DEU",
+
+  spagna: "ESP",
+  spain: "ESP",
+  espagne: "ESP",
+
+  svizzera: "CHE",
+  switzerland: "CHE",
+  suisse: "CHE",
+
+  austria: "AUT",
+
+  olanda: "NLD",
+  "paesi bassi": "NLD",
+  netherlands: "NLD",
+
+  portogallo: "PRT",
+  portugal: "PRT",
+
+  "regno unito": "GBR",
+  "united kingdom": "GBR",
+  uk: "GBR",
+
+  irlanda: "IRL",
+  ireland: "IRL",
+
+  monaco: "MCO",
+};
+
+function getCountryCode(country?: string | null) {
+  if (!country) return null;
+
+  const normalized = country.trim().toLowerCase();
+
+  return (
+    countryCodes[normalized] ??
+    country.trim().slice(0, 3).toUpperCase()
+  );
+}
+
 export default async function ProjectsPage({
   searchParams,
 }: {
@@ -346,21 +402,32 @@ export default async function ProjectsPage({
                 return (
                   <tr key={project.id}>
                     {/* COMMESSA */}
-                    <td
-                      className="col-description"
-                      title={project.name}
-                    >
-                      <Link
-                        href={`/commesse/${project.id}`}
-                        className="text-decoration-none fw-semibold"
-                      >
-                        {project.project_code}
-                      </Link>
+<td
+  className="col-description"
+  title={project.name}
+>
+  <div className="d-flex align-items-center gap-2">
+    <Link
+      href={`/commesse/${project.id}`}
+      className="text-decoration-none fw-semibold"
+    >
+      {project.project_code}
+    </Link>
 
-                      <div className="small text-muted text-truncate">
-                        {project.name}
-                      </div>
-                    </td>
+    {project.country && (
+      <span
+        className="badge text-bg-light border"
+        title={project.country}
+      >
+        {getCountryCode(project.country)}
+      </span>
+    )}
+  </div>
+
+  <div className="small text-muted text-truncate mt-1">
+    {project.name}
+  </div>
+</td>
 
                     {/* CLIENTE */}
                     <td className="col-description">

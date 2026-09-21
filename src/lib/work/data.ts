@@ -47,9 +47,9 @@ export async function findSources(kind:SourceKind,query="",id?:string):Promise<L
 }
 export const resolveRegistry=cache(async(record:Registry):Promise<LinkedRecord|null>=>{const s=registrySource(record);return s?(await findSources(s.kind,"",s.id))[0]??null:null;});
 export const workMetadata=cache(async()=>{const user=await requirePermission("task.read");const [profiles,entities]=await Promise.all([getProfileDirectory(),getLegalEntities()]);return {user,profiles,entities,kinds:(Object.keys(sources) as SourceKind[]).filter(k=>hasPermission(user.role,sources[k].permission))};});
-export async function getTasks(p:WorkFilters={}){
+export async function getTasks(p:WorkFilters={},countOnly=false){
  const user=await requirePermission("task.read"),db=await authorizedClient("task.read");const page=pageNumber(p.page),today=new Date().toISOString().slice(0,10);
- let q=db.from("tasks").select(p.record_type?"*,task_records(work_records(*)),matching:task_records!inner(work_records!inner(*))":"*,task_records(work_records(*))",{count:"exact"});
+ let q=db.from("tasks").select(p.record_type?"*,task_records(work_records(*)),matching:task_records!inner(work_records!inner(*))":"*,task_records(work_records(*))",{count:"exact",head:countOnly});
  q=p.archived==="1"?q.not("archived_at","is",null):q.is("archived_at",null);
  if(p.q)q=q.ilike("title",`%${p.q.replace(/[%,_]/g,"")}%`);
  if(p.status)q=q.eq("status",p.status);else if(p.completed!=="1")q=q.in("status",["todo","in_progress"]);
@@ -71,9 +71,9 @@ export async function getTasks(p:WorkFilters={}){
  return {rows,count:r.count??0,page};
 }
 export async function getTask(id:string){const db=await authorizedClient("task.read");const r=await db.from("tasks").select("*,task_records(work_records(*))").eq("id",id).maybeSingle();checkDatabase(r.error);if(!r.data)return null;const t=r.data as Task;return {...t,links:(await Promise.all(t.task_records.map(l=>resolveRegistry(l.work_records)))).filter((l):l is LinkedRecord=>!!l)};}
-export async function getAnomalies(p:WorkFilters={}){
+export async function getAnomalies(p:WorkFilters={},countOnly=false){
  await syncAnomalies();const user=await requirePermission("anomaly.read"),db=await authorizedClient("anomaly.read"),page=pageNumber(p.page);
- let q=db.from("anomalies").select(p.record_type?"*,work_records!inner(*)":"*,work_records(*)",{count:"exact"}).eq("status",p.view==="resolved"?"resolved":p.view==="ignored"?"ignored":"open");
+ let q=db.from("anomalies").select(p.record_type?"*,work_records!inner(*)":"*,work_records(*)",{count:"exact",head:countOnly}).eq("status",p.view==="resolved"?"resolved":p.view==="ignored"?"ignored":"open");
  if(p.record_type&&p.record_source)q=q.eq(`work_records.${p.record_type}_id`,p.record_source);
  if(p.view==="critical")q=q.eq("severity","critical");if(p.view==="mine")q=q.eq("assigned_to",user.id);
  if(p.q)q=q.ilike("title",`%${p.q.replace(/[%,_]/g,"")}%`);if(p.severity)q=q.eq("severity",p.severity);if(p.assigned)q=q.eq("assigned_to",p.assigned);if(p.code)q=q.eq("code",p.code);

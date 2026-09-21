@@ -28,7 +28,7 @@ export function CashFlowChart({
 
   if (!hasValues) {
     return (
-      <DashboardEmptyState message="Nessun incasso o pagamento previsto nei prossimi 90 giorni." />
+      <DashboardEmptyState message="Nessun residuo EUR scaduto o previsto nei prossimi 90 giorni." />
     );
   }
 

@@ -4,9 +4,10 @@ import { formatCurrencyEUR } from "@/lib/dashboard-helpers";
 type FinancialSummaryProps = {
   title: string;
   bucket: FinancialBucket;
+  settled: number;
 };
 
-export function FinancialSummary({ title, bucket }: FinancialSummaryProps) {
+export function FinancialSummary({ title, bucket, settled }: FinancialSummaryProps) {
   return (
     <div>
       <h3 className="h6 text-uppercase text-muted mb-3">{title}</h3>
@@ -22,6 +23,8 @@ export function FinancialSummary({ title, bucket }: FinancialSummaryProps) {
 
         <dt className="col-7 text-danger">Scaduto</dt>
         <dd className="col-5 text-end text-danger fw-semibold">{formatCurrencyEUR(bucket.overdue)}</dd>
+        <dt className="col-7 text-muted small">Movimenti registrati · tutte le date</dt>
+        <dd className="col-5 text-end small">{formatCurrencyEUR(settled)}</dd>
       </dl>
     </div>
   );

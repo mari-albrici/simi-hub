@@ -1,3 +1,5 @@
+import { getDeadlines } from "@/lib/deadlines";
+import { summarizeInvoiceAmounts } from "@/lib/dashboard-financial";
 import { authorizedClient } from "@/lib/permissions";
 import { AppError, checkDatabase } from "@/lib/errors";
 import { uuidSchema } from "@/lib/validations";
@@ -173,8 +175,8 @@ export async function getReportSummary() {
     getInvoices(),
     db.from("projects").select("id",{count:"exact",head:true}).eq("status","active").is("archived_at",null),
     db.from("documents").select("id",{count:"exact",head:true}).is("archived_at",null),
-    db.from("deadlines").select("id",{count:"exact",head:true}).eq("status","open"),
+    getDeadlines({status:"open"}),
   ]);
-  [projects,documents,deadlines].forEach(r => checkDatabase(r.error));
-  return { activeProjects: projects.count ?? 0,totalInvoicesAmount: invoices.reduce((sum,i)=>sum+i.amount_total,0),documentsCount: documents.count ?? 0,openDeadlines: deadlines.count ?? 0 };
+  [projects,documents].forEach(r => checkDatabase(r.error));
+  return { activeProjects: projects.count ?? 0,invoiceAmounts: summarizeInvoiceAmounts(invoices),documentsCount: documents.count ?? 0,openDeadlines: deadlines.count ?? 0 };
 }

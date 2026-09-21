@@ -40,20 +40,18 @@ export default async function DashboardPage() {
     data.kpis.payableOverdue.count +
     data.kpis.receivableOverdue.count;
 
-  const totalInflow = data.cashFlow.reduce(
+  const totalInflow = data.cashFlow.slice(1).reduce(
     (sum, point) => sum + point.inflow,
     0
   );
 
-  const totalOutflow = data.cashFlow.reduce(
+  const totalOutflow = data.cashFlow.slice(1).reduce(
     (sum, point) => sum + point.outflow,
     0
   );
 
   const expectedBalance = totalInflow - totalOutflow;
 
-  const totalAttention =
-    work.count + data.kpis.deadlinesNext7;
 
   return (
     <>
@@ -117,22 +115,23 @@ export default async function DashboardPage() {
 
           <div className="col-sm-6 col-xl-3">
             <DashboardKpiCard
-              label="Scaduto"
-              value={String(totalOverdue)}
-              sublabel={`${data.kpis.payableOverdue.count} fornitori · ${data.kpis.receivableOverdue.count} clienti`}
-              tone={totalOverdue > 0 ? "danger" : "secondary"}
-              href="/scadenze?status=overdue"
+              label="Scadenze scadute"
+              value={String(data.kpis.deadlinesOverdue)}
+              sublabel="Non completate, incluse quelle finanziarie"
+              tone={data.kpis.deadlinesOverdue > 0 ? "danger" : "secondary"}
+              href="/scadenze?period=overdue"
             />
           </div>
 
           <div className="col-sm-6 col-xl-3">
-            <DashboardKpiCard
-              label="Da gestire"
-              value={String(totalAttention)}
-              sublabel={`${work.count} attività · ${data.kpis.deadlinesNext7} scadenze`}
-              tone={totalAttention > 0 ? "warning" : "secondary"}
-              href="/attivita"
-            />
+            <div className="app-card p-3 h-100">
+              <h2 className="h6">Richiede attenzione</h2>
+              <dl className="mb-0">
+                <div className="d-flex justify-content-between gap-2"><dt className="fw-normal"><Link href="/attivita?view=mine">Le mie attività aperte</Link></dt><dd>{work.taskCount}</dd></div>
+                <div className="d-flex justify-content-between gap-2"><dt className="fw-normal"><Link href="/anomalie?view=open">Anomalie aperte</Link></dt><dd>{work.anomalyCount}</dd></div>
+                <div className="d-flex justify-content-between gap-2"><dt className="fw-normal"><Link href="/scadenze?period=7">Scadenze oggi / entro 7 giorni</Link></dt><dd>{data.kpis.deadlinesNext7}</dd></div>
+              </dl>
+            </div>
           </div>
 
         </div>
@@ -144,6 +143,9 @@ export default async function DashboardPage() {
       ====================================================== */}
 
       <section className="mb-5">
+        <p className="small text-muted">Grafico e riepiloghi finanziari: solo EUR, senza conversioni. I KPI Da pagare / Da incassare distinguono le valute.</p>
+        {data.otherCurrencies.length > 0 && <p className="alert alert-info py-2">Importi in {data.otherCurrencies.join(", ")} esclusi dal grafico e dai riepiloghi EUR.</p>}
+        {data.undatedCount > 0 && <p className="small text-muted">{data.undatedCount} posizioni finanziarie aperte senza data: incluse nei KPI, escluse dal cash flow temporale.</p>}
 
         <div className="dashboard-section-heading">
           <div>
@@ -186,7 +188,7 @@ export default async function DashboardPage() {
                 </div>
 
                 <span className="dashboard-period-badge">
-                  Prossimi 90 giorni
+                  EUR · Scaduto e prossimi 90 giorni
                 </span>
               </div>
 
@@ -200,7 +202,7 @@ export default async function DashboardPage() {
 
                   <div>
                     <div className="dashboard-metric-label">
-                      Entrate previste
+                      Entrate nei prossimi 90 giorni
                     </div>
 
                     <div className="dashboard-metric-value">
@@ -215,7 +217,7 @@ export default async function DashboardPage() {
 
                   <div>
                     <div className="dashboard-metric-label">
-                      Uscite previste
+                      Uscite nei prossimi 90 giorni
                     </div>
 
                     <div className="dashboard-metric-value">
@@ -228,7 +230,7 @@ export default async function DashboardPage() {
                 <div className="dashboard-financial-metric">
                   <div>
                     <div className="dashboard-metric-label">
-                      Saldo previsto
+                      Saldo nei prossimi 90 giorni
                     </div>
 
                     <div
@@ -318,13 +320,10 @@ export default async function DashboardPage() {
               </div>
 
 
-              <Link
-                href="/scadenze?status=overdue"
-                className="dashboard-card-action mt-auto"
-              >
-                Vedi tutte le posizioni
-                <i className="bi bi-arrow-right" />
-              </Link>
+              <div className="mt-auto d-flex flex-column gap-2">
+                <Link href="/scadenze?kind=payment&status=overdue" className="dashboard-card-action">Pagamenti scaduti</Link>
+                <Link href="/scadenze?kind=receipt&status=overdue" className="dashboard-card-action">Incassi scaduti</Link>
+              </div>
 
             </div>
 
@@ -440,14 +439,10 @@ export default async function DashboardPage() {
             <div className="d-flex align-items-center gap-2">
 
               <h2 className="dashboard-section-title mb-0">
-                Da gestire
+                Richiede attenzione
               </h2>
 
-              {totalAttention > 0 && (
-                <span className="dashboard-attention-count">
-                  {totalAttention}
-                </span>
-              )}
+
 
             </div>
 
@@ -475,12 +470,12 @@ export default async function DashboardPage() {
                   </div>
 
                   <h3 className="dashboard-card-title">
-                    Prossime scadenze
+                    Scadenze oggi / entro 30 giorni
                   </h3>
                 </div>
 
                 <Link
-                  href="/scadenze"
+                  href="/scadenze?period=30"
                   className="dashboard-card-link"
                 >
                   Vedi tutte
@@ -517,21 +512,17 @@ export default async function DashboardPage() {
                       Richiede attenzione
                     </h3>
 
-                    {work.count > 0 && (
-                      <span className="dashboard-warning-badge">
-                        {work.count}
-                      </span>
-                    )}
+
 
                   </div>
 
                 </div>
 
                 <Link
-                  href="/attivita"
+                  href="/attivita?view=mine"
                   className="dashboard-card-link"
                 >
-                  Vedi tutte
+                  Le mie attività
                 </Link>
 
               </div>
@@ -575,12 +566,13 @@ export default async function DashboardPage() {
             <div className="app-card dashboard-accounting-card h-100">
 
               <div className="dashboard-card-eyebrow mb-3">
-                FORNITORI
+                FORNITORI · EUR
               </div>
 
               <FinancialSummary
                 title=""
                 bucket={data.supplierSummary}
+                settled={data.paidEUR}
               />
 
             </div>
@@ -593,12 +585,13 @@ export default async function DashboardPage() {
             <div className="app-card dashboard-accounting-card h-100">
 
               <div className="dashboard-card-eyebrow mb-3">
-                CLIENTI
+                CLIENTI · EUR
               </div>
 
               <FinancialSummary
                 title=""
                 bucket={data.customerSummary}
+                settled={data.receivedEUR}
               />
 
             </div>

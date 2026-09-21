@@ -25,6 +25,7 @@ docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/ph
 docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/phase2a1.sql
 docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/phase2a5a.sql
 docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/phase2b.sql
+docker exec "$container" psql -U postgres -q -v ON_ERROR_STOP=1 -f /tmp/tests/phase-a.sql
 # Upgrade test: actual legacy relationships/data, including an orphan, must survive.
 docker exec "$container" createdb -U postgres phase0_upgrade
 docker exec "$container" psql -U postgres -d phase0_upgrade -q -v ON_ERROR_STOP=1 -f /tmp/tests/bootstrap.sql

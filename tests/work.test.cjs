@@ -27,7 +27,7 @@ test('central status and severity map to coherent anomaly follow-up priority',()
 });
 test('dashboard operational data and source creation use existing loading components',()=>{
  const page=fs.readFileSync('src/app/(portal)/dashboard/page.tsx','utf8');
- assert.match(page,/getWorkDashboard/);assert.match(page,/href="\/anomalie"/);assert.match(page,/<UpcomingDeadlines/);
+ assert.match(page,/getWorkDashboard/);assert.match(page,/href="\/anomalie\?view=open"/);assert.match(page,/<UpcomingDeadlines/);
  const query=fs.readFileSync('src/lib/work/dashboard.ts','utf8');assert.match(query,/\.eq\("assigned_to",user.id\)\.lte\("due_date",today\)/);assert.match(query,/\.eq\("severity","critical"\)/);
  for(const file of ['task-form','anomaly-actions']){const source=fs.readFileSync(`src/components/work/${file}.tsx`,'utf8');assert.match(source,/useActionState/);assert.match(source,/SubmitButton/);assert.match(source,/role="alert"/);}
 });

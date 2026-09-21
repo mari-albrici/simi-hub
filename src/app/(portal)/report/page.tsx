@@ -1,3 +1,4 @@
+import Link from "@/components/ui/app-link";
 import { formatMoney } from "@/lib/formatters";
 import { requirePagePermission } from "@/lib/permissions";
 import { getReportSummary } from "@/lib/data";
@@ -5,7 +6,6 @@ import { getReportSummary } from "@/lib/data";
 export default async function ReportPage() {
   await requirePagePermission("report.read");
   const summary = await getReportSummary();
-  const totalInvoicesLabel = formatMoney(summary.totalInvoicesAmount);
 
   return (
     <>
@@ -25,8 +25,10 @@ export default async function ReportPage() {
         </div>
         <div className="col-md-3">
           <div className="app-card p-3 h-100">
-            <h2 className="h6">Totale fatture</h2>
-            <div className="fs-3 fw-bold">{totalInvoicesLabel}</div>
+            <h2 className="h6">Importi nominali fatture</h2>
+            {summary.invoiceAmounts.map(row => <div key={`${row.type}-${row.currency}`}><span>{row.type === "purchase" ? "Acquisti" : "Vendite"} · {row.currency}: </span><strong>{formatMoney(row.amount,row.currency)}</strong></div>)}
+            {!summary.invoiceAmounts.length && <p className="mb-0">Nessuna fattura.</p>}
+            <p className="small text-muted mb-0 mt-2">Documenti non archiviati, incluse rettifiche negative. Importi totali, non residui; nessuna conversione valutaria.</p>
           </div>
         </div>
         <div className="col-md-3">
@@ -37,7 +39,7 @@ export default async function ReportPage() {
         </div>
         <div className="col-md-3">
           <div className="app-card p-3 h-100">
-            <h2 className="h6">Scadenze aperte</h2>
+            <h2 className="h6"><Link href="/scadenze?status=open">Scadenze aperte</Link></h2>
             <div className="fs-3 fw-bold">{summary.openDeadlines}</div>
           </div>
         </div>

@@ -61,7 +61,14 @@ export async function findDocumentDuplicates(hash:string){
 export async function documentOptions(){
  const db=await authorizedClient("document.read");const [categories,entities,projects,companies,invoices,profiles]=await Promise.all([
  readAll((a,b)=>db.from("document_categories").select("id,code,name,parent_id,active").order("sort_order").order("code").range(a,b)),
- readAll((a,b)=>db.from("legal_entities").select("id,business_name").eq("active",true).order("business_name").range(a,b)),
+readAll((a,b)=>
+  db
+    .from("legal_entities")
+    .select("id,business_name,country")
+    .eq("active",true)
+    .order("business_name")
+    .range(a,b)
+),
  readAll((a,b)=>db.from("projects").select("id,project_code,legal_entity_id").is("archived_at",null).order("project_code").range(a,b)),
  readAll((a,b)=>db.from("companies").select("id,business_name").is("archived_at",null).order("business_name").range(a,b)),
  readAll((a,b)=>db.from("invoices").select("id,invoice_number,legal_entity_id").is("archived_at",null).order("invoice_number").range(a,b)),db.rpc("profile_directory")]);checkDatabase(profiles.error);

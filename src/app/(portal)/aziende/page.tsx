@@ -2,6 +2,7 @@ import { requirePagePermission } from "@/lib/permissions";
 import { hasPermission } from "@/lib/auth";
 import { getLegalEntities } from "@/lib/data";
 import { NewLegalEntityTrigger } from "./new-legal-entity-trigger";
+import Link from "@/components/ui/app-link";
 
 type AziendeSearchParams = { error?: string };
 
@@ -48,7 +49,14 @@ export default async function LegalEntitiesPage({
               {legalEntities.map((entity) => (
                 <tr key={entity.id}>
                   <td>{entity.code}</td>
-                  <td>{entity.business_name}</td>
+                  <td>
+  <Link
+    href={`/aziende/${entity.id}`}
+    className="text-decoration-none fw-semibold text-dark"
+  >
+    {entity.business_name}
+  </Link>
+</td>
                   <td>{entity.country ?? "-"}</td>
                   <td>{entity.email ?? "-"}</td>
                   <td>{entity.phone ?? "-"}</td>

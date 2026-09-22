@@ -382,11 +382,14 @@ export async function getInvoiceById(id: string) {
     installments: installments.map(i => ({ id: String(i.id), due_date: String(i.due_date), amount: Number(i.amount), paid: Boolean(i.paid) })),
   };
 }
+
 export type LegalEntityRecord = { id: string; code: string; business_name: string; country: string | null; email: string | null; phone: string | null; active: boolean };
+
 export async function getLegalEntities(): Promise<LegalEntityRecord[]> {
   const db = await authorizedClient("legal_entity.read");
   return (await readAll((a,b) => db.from("legal_entities").select("*").eq("active",true).order("id").range(a,b))).map(r => ({ id: String(r.id), code: String(r.code), business_name: String(r.business_name), country: stringOrNull(r.country), email: stringOrNull(r.email), phone: stringOrNull(r.phone), active: Boolean(r.active) }));
 }
+
 export async function getEmployees() {
   const db = await authorizedClient("employee.read");
   return (await readAll((a,b) => db.from("employees").select("*, entity:legal_entities(business_name)").order("id").range(a,b))).map(r => ({ id: String(r.id),full_name: `${r.first_name} ${r.last_name}`,employee_code: stringOrNull(r.employee_code),role_title: stringOrNull(r.role_title),email: stringOrNull(r.email),legal_entity_name: (r.entity as { business_name: string } | null)?.business_name,status: String(r.status) }));

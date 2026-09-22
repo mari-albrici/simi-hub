@@ -8,7 +8,17 @@ export function DocumentFields({options,values={},scopes=["general"]}:{options:D
  const select=(name:string,label:string,rows:{id:string;label:string}[],required=false,fallback="")=><div className="col-md-4" key={name}><label className="form-label" htmlFor={name}>{label}</label><select id={name} name={name} className="form-select" defaultValue={value(name,fallback)} required={required}><option value="">—</option>{rows.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></div>;
  return <>
  {[["title","Titolo","text"],["reference","Numero / riferimento","text"],["document_date","Data documento","date"],["expiry_date","Scadenza","date"],["country","Paese","text"],["language","Lingua","text"]].map(([name,label,type])=><div className="col-md-4" key={name}><label className="form-label" htmlFor={name}>{label}</label><input className="form-control" id={name} name={name} type={type} required={name==="title"} defaultValue={value(name)}/></div>)}
- {select("legal_entity_id","Società SIMI",options.entities.map(x=>({id:x.id,label:x.business_name})),true)}
+ {select(
+  "legal_entity_id",
+  "Sede SIMI",
+  options.entities
+    .filter(x => ["IT", "FR", "LU"].includes(x.country ?? ""))
+    .map(x => ({
+      id: x.id,
+      label: x.business_name,
+    })),
+  true
+)}
  {select("category_id","Categoria / sottocategoria",options.categories.filter(x=>x.active||x.id===values.category_id).map(x=>({id:x.id,label:`${x.code} — ${x.name}`})))}
  {select("assigned_to","Responsabile",options.profiles.map(x=>({id:x.id,label:[x.first_name,x.last_name].filter(Boolean).join(" ")||x.id})))}
  {select("status","Stato",[{id:"draft",label:"Bozza"},{id:"valid",label:"Valido"},{id:"superseded",label:"Sostituito"}],true,"valid")}

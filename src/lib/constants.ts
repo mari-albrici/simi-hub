@@ -35,19 +35,38 @@ export const LEGAL_ENTITIES = [
 
 export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
+
   { label: "Commesse", href: "/commesse" },
+
   { label: "Ordini", href: "/ordini" },
+
   { label: "DDT", href: "/ddt" },
+
   { label: "Documenti", href: "/documenti" },
+
   { label: "Fatture", href: "/fatture" },
+
   { label: "Pagamenti / Incassi", href: "/pagamenti" },
+
   { label: "Clienti", href: "/clienti" },
+
   { label: "Fornitori", href: "/fornitori" },
+
   { label: "Attività", href: "/attivita" },
+
   { label: "Scadenze", href: "/scadenze" },
+
   { label: "Anomalie", href: "/anomalie" },
+
   { label: "Personale", href: "/personale" },
+
+  { label: "Guide e Procedure", href: "/guide" },
+
   { label: "Società SIMI", href: "/aziende" },
+  
+  { label: "Guide e Procedure", href: "/guide" },
+
   { label: "Report", href: "/report" },
+
   { label: "Impostazioni", href: "/impostazioni" },
 ];

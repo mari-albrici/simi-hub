@@ -117,3 +117,38 @@ export const legalEntitySchema = z.object({
   code: z.string().trim().min(2).max(40), business_name: z.string().trim().min(2).max(250), country: optionalText,
   vat_number: optionalText, tax_code: optionalText, address: optionalText, city: optionalText, email: email.default(""), phone: optionalText,
 });
+
+export const guideChecklistItemSchema = z.object({
+  label: z.string().trim().min(1).max(500),
+  description: z.preprocess(
+    (v) => (v === undefined || v === null ? "" : v),
+    z.string().trim().max(2000),
+  ),
+});
+
+export const guideFormSchema = z.object({
+  title: z.string().trim().min(2).max(250),
+
+  summary: z.preprocess(
+    (v) => (v === undefined || v === null ? "" : v),
+    z.string().trim().max(1000),
+  ),
+
+  content: z.preprocess(
+    (v) => (v === undefined || v === null ? "" : v),
+    z.string().trim().max(50000),
+  ),
+
+  category_id: nullableUuid,
+
+  status: z.enum([
+    "draft",
+    "published",
+  ]),
+
+  is_important: z.boolean(),
+
+  checklist: z
+    .array(guideChecklistItemSchema)
+    .max(200),
+});

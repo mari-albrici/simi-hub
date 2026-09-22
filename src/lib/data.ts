@@ -411,3 +411,512 @@ export async function getReportSummary() {
   [projects,documents].forEach(r => checkDatabase(r.error));
   return { activeProjects: projects.count ?? 0,invoiceAmounts: summarizeInvoiceAmounts(invoices),documentsCount: documents.count ?? 0,openDeadlines: deadlines.count ?? 0 };
 }
+
+
+// ============================================================
+// GUIDE E PROCEDURE
+// ============================================================
+
+export type GuideStatus = "draft" | "published" | "archived";
+
+export type GuideCategoryRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  description: string | null;
+  sort_order: number;
+  active: boolean;
+};
+
+export type GuideListRecord = {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  content: string;
+  category_id: string | null;
+  category_name: string | null;
+  parent_category_id: string | null;
+  parent_category_name: string | null;
+  status: GuideStatus;
+  is_important: boolean;
+  sort_order: number;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+  is_favorite: boolean;
+};
+
+export type GuideFilter = {
+  q?: string;
+  category?: string;
+  status?: GuideStatus;
+  important?: boolean;
+  favorites?: boolean;
+  page?: number;
+  pageSize?: number;
+};
+
+export async function getGuideCategories(): Promise<GuideCategoryRecord[]> {
+  const db = await authorizedClient("document.read");
+
+  const result = await db
+    .from("guide_categories")
+    .select(
+      `
+        id,
+        name,
+        slug,
+        parent_id,
+        description,
+        sort_order,
+        active
+      `,
+    )
+    .eq("active", true)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  checkDatabase(result.error, "Lettura categorie guide");
+
+  return (result.data ?? []).map((row) => ({
+    id: String(row.id),
+    name: String(row.name),
+    slug: String(row.slug),
+    parent_id: stringOrNull(row.parent_id),
+    description: stringOrNull(row.description),
+    sort_order: Number(row.sort_order ?? 0),
+    active: Boolean(row.active),
+  }));
+}
+
+export async function searchGuides(
+  filter: GuideFilter = {},
+): Promise<{
+  rows: GuideListRecord[];
+  count: number;
+}> {
+  const db = await authorizedClient("document.read");
+
+  const page = Math.max(1, filter.page ?? 1);
+  const pageSize = Math.min(
+    100,
+    Math.max(1, filter.pageSize ?? 50),
+  );
+
+  /*
+   * Carichiamo categorie e preferiti una sola volta.
+   */
+  const [categories, favoritesResult] = await Promise.all([
+    getGuideCategories(),
+
+    db
+      .from("guide_favorites")
+      .select("guide_id"),
+  ]);
+
+  checkDatabase(
+    favoritesResult.error,
+    "Lettura guide preferite",
+  );
+
+  const favoriteIds = (favoritesResult.data ?? []).map(
+    (row) => String(row.guide_id),
+  );
+
+  const favoriteSet = new Set(favoriteIds);
+
+  /*
+   * Mappa categorie per ricavare rapidamente
+   * categoria e categoria padre.
+   */
+  const categoryMap = new Map(
+    categories.map((category) => [
+      category.id,
+      category,
+    ]),
+  );
+
+  /*
+   * Se chiediamo solo le preferite ma l'utente
+   * non ne ha ancora nessuna, terminiamo subito.
+   */
+  if (filter.favorites && favoriteIds.length === 0) {
+    return {
+      rows: [],
+      count: 0,
+    };
+  }
+
+  let query = db
+    .from("guides")
+    .select(
+      `
+        id,
+        title,
+        slug,
+        summary,
+        content,
+        category_id,
+        status,
+        is_important,
+        sort_order,
+        created_by,
+        updated_by,
+        created_at,
+        updated_at,
+        archived_at,
+        category:guide_categories!guides_category_id_fkey(
+          id,
+          name,
+          parent_id
+        )
+      `,
+      {
+        count: "exact",
+      },
+    );
+
+  /*
+   * Archiviate / attive.
+   */
+  if (filter.status === "archived") {
+    query = query.not(
+      "archived_at",
+      "is",
+      null,
+    );
+  } else {
+    query = query.is(
+      "archived_at",
+      null,
+    );
+  }
+
+  /*
+   * Ricerca libera.
+   */
+  if (filter.q?.trim()) {
+    const safe = filter.q
+      .trim()
+      .replace(/[%_\\]/g, "\\$&");
+
+    query = query.or(
+      [
+        `title.ilike.%${safe}%`,
+        `summary.ilike.%${safe}%`,
+        `content.ilike.%${safe}%`,
+      ].join(","),
+    );
+  }
+
+  /*
+   * Categoria.
+   *
+   * Se selezioniamo una categoria principale,
+   * includiamo anche le sottocategorie dirette.
+   */
+  if (filter.category) {
+    const matchingCategoryIds = [
+      filter.category,
+
+      ...categories
+        .filter(
+          (category) =>
+            category.parent_id === filter.category,
+        )
+        .map(
+          (category) => category.id,
+        ),
+    ];
+
+    query = query.in(
+      "category_id",
+      matchingCategoryIds,
+    );
+  }
+
+  /*
+   * Stato.
+   */
+  if (
+    filter.status &&
+    filter.status !== "archived"
+  ) {
+    query = query.eq(
+      "status",
+      filter.status,
+    );
+  }
+
+  /*
+   * Solo importanti.
+   */
+  if (filter.important) {
+    query = query.eq(
+      "is_important",
+      true,
+    );
+  }
+
+  /*
+   * Solo preferite.
+   */
+  if (filter.favorites) {
+    query = query.in(
+      "id",
+      favoriteIds,
+    );
+  }
+
+  /*
+   * Ordinamento + paginazione.
+   */
+  query = query
+    .order("is_important", {
+      ascending: false,
+    })
+    .order("sort_order", {
+      ascending: true,
+    })
+    .order("updated_at", {
+      ascending: false,
+    })
+    .range(
+      (page - 1) * pageSize,
+      page * pageSize - 1,
+    );
+
+  const result = await query;
+
+  checkDatabase(
+    result.error,
+    "Lettura guide e procedure",
+  );
+
+  const rows: GuideListRecord[] = (
+    result.data ?? []
+  ).map((row) => {
+    const category = row.category as
+      | {
+          id?: string;
+          name?: string;
+          parent_id?: string | null;
+        }
+      | null;
+
+    const parentCategory =
+      category?.parent_id
+        ? categoryMap.get(
+            String(category.parent_id),
+          )
+        : undefined;
+
+    return {
+      id: String(row.id),
+
+      title: String(row.title),
+
+      slug: String(row.slug),
+
+      summary: stringOrNull(
+        row.summary,
+      ),
+
+      content: String(
+        row.content ?? "",
+      ),
+
+      category_id: stringOrNull(
+        row.category_id,
+      ),
+
+      category_name:
+        category?.name ?? null,
+
+      parent_category_id:
+        category?.parent_id ?? null,
+
+      parent_category_name:
+        parentCategory?.name ?? null,
+
+      status:
+        row.status as GuideStatus,
+
+      is_important: Boolean(
+        row.is_important,
+      ),
+
+      sort_order: Number(
+        row.sort_order ?? 0,
+      ),
+
+      created_by: stringOrNull(
+        row.created_by,
+      ),
+
+      updated_by: stringOrNull(
+        row.updated_by,
+      ),
+
+      created_at: String(
+        row.created_at,
+      ),
+
+      updated_at: String(
+        row.updated_at,
+      ),
+
+      archived_at: stringOrNull(
+        row.archived_at,
+      ),
+
+      is_favorite: favoriteSet.has(
+        String(row.id),
+      ),
+    };
+  });
+
+  return {
+    rows,
+    count: result.count ?? 0,
+  };
+}
+  
+export async function getGuideById(id: string) {
+  const db = await authorizedClient("document.read");
+
+  uuidSchema.parse(id);
+
+  const [guideResult, checklistResult] = await Promise.all([
+    db
+      .from("guides")
+      .select(
+        `
+          id,
+          title,
+          slug,
+          summary,
+          content,
+          category_id,
+          status,
+          is_important,
+          sort_order,
+          created_by,
+          updated_by,
+          created_at,
+          updated_at,
+          archived_at
+        `,
+      )
+      .eq("id", id)
+      .maybeSingle(),
+
+    db
+      .from("guide_checklist_items")
+      .select(
+        `
+          id,
+          guide_id,
+          label,
+          description,
+          sort_order
+        `,
+      )
+      .eq("guide_id", id)
+      .order("sort_order", {
+        ascending: true,
+      }),
+  ]);
+
+  checkDatabase(
+    guideResult.error,
+    "Lettura guida",
+  );
+
+  checkDatabase(
+    checklistResult.error,
+    "Lettura checklist guida",
+  );
+
+  if (!guideResult.data) {
+    return null;
+  }
+
+  return {
+    id: String(guideResult.data.id),
+
+    title: String(
+      guideResult.data.title,
+    ),
+
+    slug: String(
+      guideResult.data.slug,
+    ),
+
+    summary: stringOrNull(
+      guideResult.data.summary,
+    ),
+
+    content: String(
+      guideResult.data.content ?? "",
+    ),
+
+    category_id: stringOrNull(
+      guideResult.data.category_id,
+    ),
+
+    status:
+      guideResult.data.status as GuideStatus,
+
+    is_important: Boolean(
+      guideResult.data.is_important,
+    ),
+
+    sort_order: Number(
+      guideResult.data.sort_order ?? 0,
+    ),
+
+    created_by: stringOrNull(
+      guideResult.data.created_by,
+    ),
+
+    updated_by: stringOrNull(
+      guideResult.data.updated_by,
+    ),
+
+    created_at: String(
+      guideResult.data.created_at,
+    ),
+
+    updated_at: String(
+      guideResult.data.updated_at,
+    ),
+
+    archived_at: stringOrNull(
+      guideResult.data.archived_at,
+    ),
+
+    checklist: (
+      checklistResult.data ?? []
+    ).map((item) => ({
+      id: String(item.id),
+
+      label: String(
+        item.label,
+      ),
+
+      description:
+        stringOrNull(
+          item.description,
+        ) ?? "",
+
+      sort_order: Number(
+        item.sort_order ?? 0,
+      ),
+    })),
+  };
+}

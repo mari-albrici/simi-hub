@@ -90,7 +90,37 @@ export default async function InvoicesPage({
               {displayedInvoices.length === 0 && <tr><td colSpan={10} className="text-muted py-4"><p>{hasFilter ? "Nessuna fattura per i filtri selezionati." : "Nessuna fattura registrata."}</p>{access.canCreate && <NewInvoiceTrigger />}</td></tr>}
             {displayedInvoices.map((invoice) => { const f = financial.get(invoice.id); return (
               <tr key={invoice.id}>
-                <td className="col-description"><Link href={`/fatture/${invoice.id}`} className="fw-semibold">{invoice.invoice_number}</Link><div className="small text-muted text-truncate">{invoice.invoice_type==="purchase"?"Acquisto":"Vendita"}</div><div className="small text-muted text-truncate" title={invoice.company_name}>{invoice.company_name}</div></td>
+                <td className="col-description">
+  <div className="d-flex align-items-center gap-2">
+    <Link
+      href={`/fatture/${invoice.id}`}
+      className="fw-semibold"
+    >
+      {invoice.invoice_number}
+    </Link>
+
+    {invoice.entity_country && (
+      <span
+        className="badge text-bg-secondary"
+        title={invoice.company_name}
+      >
+        {invoice.entity_country === "IT"
+          ? "ITA"
+          : invoice.entity_country === "FR"
+            ? "FRA"
+            : invoice.entity_country === "LU"
+              ? "LUX"
+              : invoice.entity_country}
+      </span>
+    )}
+  </div>
+
+  <div className="small text-muted text-truncate">
+    {invoice.invoice_type === "purchase"
+      ? "Acquisto"
+      : "Vendita"}
+  </div>
+</td>
                 <td className="text-break">{invoice.esolver_registration_number || "—"}</td>
                 <td className="col-date">{formatDate(invoice.invoice_date)}</td>
                 <td className="col-description" title={invoice.customer_name}>{invoice.customer_name}</td>

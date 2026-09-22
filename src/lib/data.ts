@@ -304,19 +304,24 @@ export async function getProjectById(id: string) {
   ]); checkDatabase(result.error,"Lettura commessa"); if(!result.data)return null;
   return projectRecord(result.data as Record<string,unknown>,new Map(profiles.map(p=>[p.id,[p.first_name,p.last_name].filter(Boolean).join(" ")])));
 }
+
 export type ProjectSummary = { documents:number; invoices:number; supplier_invoices:number; customer_invoices:number; open_deadlines:number; overdue_deadlines:number; unattributed_invoices?:number; financial:Array<{kind:string;currency:string;original:number;settled:number;residual:number}> };
+
 export async function getProjectSummary(id:string):Promise<ProjectSummary>{
   const db=await authorizedClient("project.read"); const r=await db.rpc("project_operational_summary",{p_project_id:uuidSchema.parse(id)}); checkDatabase(r.error,"Indicatori commessa");
   const value=(r.data??{}) as Partial<ProjectSummary>; return {documents:Number(value.documents??0),invoices:Number(value.invoices??0),supplier_invoices:Number(value.supplier_invoices??0),customer_invoices:Number(value.customer_invoices??0),open_deadlines:Number(value.open_deadlines??0),overdue_deadlines:Number(value.overdue_deadlines??0),unattributed_invoices:Number(value.unattributed_invoices??0),financial:Array.isArray(value.financial)?value.financial.map(x=>({kind:String(x.kind),currency:String(x.currency),original:Number(x.original),settled:Number(x.settled),residual:Number(x.residual)})):[]};
 }
+
 export async function getProjectActivity(id:string){const db=await authorizedClient("project.read");const r=await db.rpc("project_activity_events",{p_project_id:uuidSchema.parse(id)});checkDatabase(r.error,"Cronologia commessa");return (r.data??[]) as {id:string;user_id:string|null;action:string;entity_type:string;entity_id:string;created_at:string}[];}
+
 export async function getOrders(params:{q?:string;entity?:string;project?:string;type?:string;page?:number}={}){const db=await authorizedClient("order.read");let q=db.from("order_reconciliation").select("*",{count:"exact"});if(params.entity)q=q.eq("legal_entity_id",params.entity);if(params.q)q=q.ilike("order_number",`%${params.q}%`);if(params.type)q=q.eq("order_type",params.type);if(params.project){const links=await db.from("order_projects").select("order_id").eq("project_id",params.project);checkDatabase(links.error);q=q.in("id",(links.data??[]).map(x=>String(x.order_id)));}const page=Number.isSafeInteger(params.page)&&Number(params.page)>0?Number(params.page):1;const r=await q.order("order_date",{ascending:false}).range((page-1)*50,page*50-1);checkDatabase(r.error,"Ordini");return {rows:r.data??[],count:r.count??0};}
 export async function getDeliveryNotes(params:{q?:string;entity?:string;project?:string;page?:number}={}){const db=await authorizedClient("delivery_note.read");let q=db.from("delivery_note_register").select("*",{count:"exact"});if(params.entity)q=q.eq("legal_entity_id",params.entity);if(params.q)q=q.ilike("note_number",`%${params.q}%`);if(params.project){const links=await db.from("delivery_note_projects").select("delivery_note_id").eq("project_id",params.project);checkDatabase(links.error);q=q.in("id",(links.data??[]).map(x=>String(x.delivery_note_id)));}const page=Number.isSafeInteger(params.page)&&Number(params.page)>0?Number(params.page):1;const r=await q.order("note_date",{ascending:false}).range((page-1)*50,page*50-1);checkDatabase(r.error,"DDT");return {rows:r.data??[],count:r.count??0};}
 export async function orderOptions(){const [companies,entities,projects]=await Promise.all([getAllCompanies(),getLegalEntities(),(await searchProjects({pageSize:500})).rows]);return {companies,entities,projects};}
 export async function deliveryNoteOptions(){const [o,orders]=await Promise.all([orderOptions(),getOrders({page:1})]);return {...o,orders:orders.rows as {id:string;order_number:string}[]};}
 export type InvoiceFilter = { type?: "purchase" | "sale"; status?: string; search?: string; legal_entity_id?: string; company_id?: string; project_id?: string; esolver_registration_number?: string; date_from?: string; date_to?: string; due_from?: string; due_to?: string };
 type ProjectLink = { project_id: string; project: { project_code: string } | null };
-const invoiceSelect = "*, supplier:companies!invoices_supplier_id_fkey(business_name), customer:companies!invoices_customer_id_fkey(business_name), entity:legal_entities(business_name), invoice_projects(project_id,project:projects(project_code))";
+
+const invoiceSelect = "*, supplier:companies!invoices_supplier_id_fkey(business_name), customer:companies!invoices_customer_id_fkey(business_name), entity:legal_entities(business_name,country), invoice_projects(project_id,project:projects(project_code))";
 function invoice(row: Record<string, unknown>) {
   const links = (row.invoice_projects ?? []) as ProjectLink[];
   return { id: String(row.id), updated_at: String(row.updated_at), invoice_number: String(row.invoice_number), esolver_registration_number: stringOrNull(row.esolver_registration_number), invoice_type: row.invoice_type as InvoiceType,
@@ -325,11 +330,13 @@ function invoice(row: Record<string, unknown>) {
     invoice_date: stringOrNull(row.invoice_date) ?? undefined, due_date: stringOrNull(row.due_date) ?? undefined, notes: stringOrNull(row.notes) ?? "",
     supplier_id: stringOrNull(row.supplier_id), customer_id: stringOrNull(row.customer_id), legal_entity_id: stringOrNull(row.legal_entity_id),
     customer_name: ((row.customer ?? row.supplier) as { business_name?: string } | null)?.business_name,
-    company_name: (row.entity as { business_name?: string } | null)?.business_name,
+   company_name: (row.entity as { business_name?: string; country?: string } | null)?.business_name,
+entity_country: (row.entity as { business_name?: string; country?: string } | null)?.country ?? null,
     project_ids: links.map(l => l.project_id), linked_projects: links.map(l => ({ id: l.project_id, project_code: l.project?.project_code ?? "-" })),
     project_code: links.map(l => l.project?.project_code ?? "-").join(", "), document_id: stringOrNull(row.document_id),
   };
 }
+
 export async function getInvoices(filter?: InvoiceFilter) {
   const db = await authorizedClient("invoice.read");
   let projectInvoiceIds: string[] | null = null;
@@ -361,6 +368,7 @@ export async function getInvoices(filter?: InvoiceFilter) {
     return query;
   })).map(invoice);
 }
+
 export async function getInvoiceById(id: string) {
   const db = await authorizedClient("invoice.read"); uuidSchema.parse(id);
   const result = await db.from("invoices").select(invoiceSelect).eq("id",id).is("archived_at",null).maybeSingle();

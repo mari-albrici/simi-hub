@@ -1,7 +1,7 @@
 "use server";
 import { uploadDocumentFile } from "@/lib/document-upload-workflow";
 import { findDocumentDuplicates } from "@/lib/documents";
-import { documentHash,validateDocumentFile } from "@/lib/files";
+import { documentHash, validateDocumentFile } from "@/lib/files";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authorizedClient } from "@/lib/permissions";
@@ -27,11 +27,11 @@ async function saveInvoice(form: FormData, edit: boolean) {
   if (pdf instanceof File && pdf.size > 0) {
     if (pdf.type !== "application/pdf" || pdf.size > 10 * 1024 * 1024) throw new AppError("validation", "Il PDF deve essere valido e non superare 10 MB.");
     await validateDocumentFile(pdf);
-    const duplicates=await findDocumentDuplicates(await documentHash(pdf));
-    if(duplicates.length&&form.get("acknowledge_pdf_duplicate")!=="1")throw new AppError("validation",`Questo file risulta già presente nell'archivio: ${duplicates.map(d=>`${d.title||d.original_filename} (/documenti/${d.id})`).join(", ")}. Collega il documento esistente dalla sua scheda o conferma il duplicato nel modulo fattura.`);
-    const category=await supabase.from("document_categories").select("id").eq("code","07").maybeSingle();checkDatabase(category.error);
-    const uploaded=await uploadDocumentFile(supabase,pdf,{title:`Fattura ${String(form.get("invoice_number")||pdf.name)}`,legal_entity_id:String(form.get("legal_entity_id")),category_id:category.data?.id||null,document_date:form.get("invoice_date")||null,status:"valid",access_scope:"general"},{typeName:"Fattura",acknowledgeDuplicate:form.get("acknowledge_pdf_duplicate")==="1"});
-    uploadedDocumentId=uploaded.documentId;
+    const duplicates = await findDocumentDuplicates(await documentHash(pdf));
+    if (duplicates.length && form.get("acknowledge_pdf_duplicate") !== "1") throw new AppError("validation", `Questo file risulta già presente nell'archivio: ${duplicates.map(d => `${d.title || d.original_filename} (/documenti/${d.id})`).join(", ")}. Collega il documento esistente dalla sua scheda o conferma il duplicato nel modulo fattura.`);
+    const category = await supabase.from("document_categories").select("id").eq("code", "07").maybeSingle(); checkDatabase(category.error);
+    const uploaded = await uploadDocumentFile(supabase, pdf, { title: `Fattura ${String(form.get("invoice_number") || pdf.name)}`, legal_entity_id: String(form.get("legal_entity_id")), category_id: category.data?.id || null, document_date: form.get("invoice_date") || null, status: "valid", access_scope: "general" }, { typeName: "Fattura", acknowledgeDuplicate: form.get("acknowledge_pdf_duplicate") === "1" });
+    uploadedDocumentId = uploaded.documentId;
   }
   const type = String(form.get("invoice_type"));
   const counterpartyId = String(form.get("counterparty_id") ?? "");
@@ -65,19 +65,20 @@ async function archive(kind: "project" | "invoice" | "company", id: string, perm
 }
 export async function deleteInvoiceAction(id: string) { return mutation("/fatture", "Fattura archiviata.", () => archive("invoice", id, "invoice.delete")); }
 export async function saveFinancialMovementAction(form: FormData) {
- const invoiceId=uuidSchema.safeParse(form.get("primary_invoice_id"));
- const destination=invoiceId.success?`/fatture/${invoiceId.data}`:"/pagamenti";
- return mutation(destination, "Movimento registrato.", async () => {
-  const supabase = await authorizedClient("invoice.update");
-  let allocations: unknown[]; try { allocations = JSON.parse(String(form.get("allocations_json") ?? "[]")); } catch { throw new AppError("validation", "Allocazioni non valide."); }
-  const primaryInvoice = String(form.get("primary_invoice_id") || "");
-  if (primaryInvoice) allocations = [{ invoice_id: primaryInvoice, installment_id: form.get("installment_id") || null, amount: Number(form.get("amount")) }];
-  const payload = { id: form.get("id") || null, direction: form.get("direction"), legal_entity_id: form.get("legal_entity_id"), counterparty_id: form.get("counterparty_id") || null, movement_date: form.get("movement_date"), amount: Number(form.get("amount")), currency: String(form.get("currency") || "EUR").toUpperCase(), payment_method: form.get("payment_method") || null, reference: form.get("reference") || null, account_id: form.get("account_id") || null, notes: form.get("notes") || null, allocations };
-  const result = await supabase.rpc("save_financial_movement", { payload }); checkDatabase(result.error,"Salvataggio movimento"); if (!result.data) throw new AppError("database","Movimento non confermato.");
-}); }
-export async function archiveFinancialMovementAction(id: string) { return mutation("/pagamenti", "Movimento archiviato.", async () => { const supabase=await authorizedClient("invoice.delete"); const result=await supabase.rpc("archive_financial_movement",{movement:uuidSchema.parse(id)}); checkDatabase(result.error,"Archiviazione movimento"); }); }
+  const invoiceId = uuidSchema.safeParse(form.get("primary_invoice_id"));
+  const destination = invoiceId.success ? `/fatture/${invoiceId.data}` : "/pagamenti";
+  return mutation(destination, "Movimento registrato.", async () => {
+    const supabase = await authorizedClient("invoice.update");
+    let allocations: unknown[]; try { allocations = JSON.parse(String(form.get("allocations_json") ?? "[]")); } catch { throw new AppError("validation", "Allocazioni non valide."); }
+    const primaryInvoice = String(form.get("primary_invoice_id") || "");
+    if (primaryInvoice) allocations = [{ invoice_id: primaryInvoice, installment_id: form.get("installment_id") || null, amount: Number(form.get("amount")) }];
+    const payload = { id: form.get("id") || null, direction: form.get("direction"), legal_entity_id: form.get("legal_entity_id"), counterparty_id: form.get("counterparty_id") || null, movement_date: form.get("movement_date"), amount: Number(form.get("amount")), currency: String(form.get("currency") || "EUR").toUpperCase(), payment_method: form.get("payment_method") || null, reference: form.get("reference") || null, account_id: form.get("account_id") || null, notes: form.get("notes") || null, allocations };
+    const result = await supabase.rpc("save_financial_movement", { payload }); checkDatabase(result.error, "Salvataggio movimento"); if (!result.data) throw new AppError("database", "Movimento non confermato.");
+  });
+}
+export async function archiveFinancialMovementAction(id: string) { return mutation("/pagamenti", "Movimento archiviato.", async () => { const supabase = await authorizedClient("invoice.delete"); const result = await supabase.rpc("archive_financial_movement", { movement: uuidSchema.parse(id) }); checkDatabase(result.error, "Archiviazione movimento"); }); }
 export async function deleteProjectAction(id: string) { return mutation("/commesse", "Commessa archiviata.", () => archive("project", id, "project.delete")); }
-export async function restoreProjectAction(id: string) { return mutation("/commesse", "Commessa ripristinata.", async () => { const db=await authorizedClient("project.delete"); const r=await db.rpc("restore_project",{project_id:uuidSchema.parse(id)}); checkDatabase(r.error,"Ripristino commessa"); }); }
+export async function restoreProjectAction(id: string) { return mutation("/commesse", "Commessa ripristinata.", async () => { const db = await authorizedClient("project.delete"); const r = await db.rpc("restore_project", { project_id: uuidSchema.parse(id) }); checkDatabase(r.error, "Ripristino commessa"); }); }
 export async function deleteCompanyAction(id: string, type: "customer" | "supplier") { return mutation(type === "supplier" ? "/fornitori" : "/clienti", "Anagrafica archiviata.", () => archive("company", id, "company.delete")); }
 async function saveProject(form: FormData, edit: boolean) {
   const supabase = await authorizedClient(edit ? "project.update" : "project.create");
@@ -99,8 +100,36 @@ async function saveCompany(form: FormData, edit: boolean) {
 }
 export async function createCompanyAction(form: FormData) { return mutation(form.get("company_type") === "supplier" ? "/fornitori" : "/clienti", "Anagrafica creata.", () => saveCompany(form, false)); }
 export async function updateCompanyAction(form: FormData) { return mutation(form.get("company_type") === "supplier" ? "/fornitori" : "/clienti", "Modifiche salvate.", () => saveCompany(form, true)); }
-export async function createLegalEntityAction(form: FormData) { return mutation("/aziende", "Società creata.", async () => {
-  const supabase = await authorizedClient("legal_entity.create");
-  const result = await supabase.from("legal_entities").insert(legalEntitySchema.parse(Object.fromEntries(form))).select("id").single();
-  checkDatabase(result.error, "Salvataggio società");
-}); }
+
+
+export async function createLegalEntityAction(form: FormData) {
+  return mutation("/aziende", "Società creata.", async () => {
+    const supabase = await authorizedClient("legal_entity.create");
+
+    const result = await supabase
+      .from("legal_entities")
+      .insert(legalEntitySchema.parse(Object.fromEntries(form)))
+      .select("id")
+      .single();
+
+    checkDatabase(result.error, "Salvataggio società");
+  });
+}
+
+export async function updateLegalEntityAction(form: FormData) {
+  return mutation("/aziende", "Modifiche salvate.", async () => {
+    const supabase = await authorizedClient("legal_entity.update");
+
+    const id = uuidSchema.parse(form.get("id"));
+    const payload = legalEntitySchema.parse(Object.fromEntries(form));
+
+    const result = await supabase
+      .from("legal_entities")
+      .update(payload)
+      .eq("id", id)
+      .select("id")
+      .single();
+
+    checkDatabase(result.error, "Aggiornamento società");
+  });
+}

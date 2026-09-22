@@ -35,6 +35,8 @@ export type PermissionName =
   | "company.delete"
   | "legal_entity.read"
   | "legal_entity.create"
+  | "legal_entity.update"
+  | "legal_entity.delete"
   | "deadline.read"
   | "deadline.write"
   | "dashboard.read"

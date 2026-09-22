@@ -574,6 +574,13 @@ export default async function ProjectDetailPage({
             </div>
 
 
+            {(summary.unattributed_invoices ?? 0) > 0 && (
+              <p className="alert alert-warning">
+                {summary.unattributed_invoices} fatture con attribuzione parziale o a più commesse sono escluse da questi saldi:
+                i pagamenti non sono ripartiti per commessa. Le fatture restano consultabili nella relativa sezione.
+              </p>
+            )}
+
             {summary.financial.length > 0 ? (
 
               <div className="row g-3">
@@ -666,9 +673,11 @@ export default async function ProjectDetailPage({
 
               <EmptyState
                 icon="bi-cash-stack"
-                title="Nessun dato economico"
+                title={(summary.unattributed_invoices ?? 0) > 0 ? "Saldi non attribuibili" : "Nessun dato economico"}
               >
-                Non risultano ancora importi attribuiti alla commessa.
+                {(summary.unattributed_invoices ?? 0) > 0
+                  ? "Consulta le fatture per gli importi e i pagamenti complessivi."
+                  : "Non risultano ancora importi attribuiti alla commessa."}
               </EmptyState>
 
             )}

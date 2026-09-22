@@ -111,7 +111,8 @@ test('all eight lists use shared density, status and secondary action patterns',
   const source=read(`src/app/(portal)/${route}/page.tsx`);
   assert.match(source,/table-admin/,route);assert.match(source,/StatusBadge/,route);
   if(route!=='scadenze')assert.match(source,/RowActionsMenu/,route);
-  if(!['clienti','fornitori'].includes(route))assert.match(source,/@\/lib\/formatters/,route);
+  // These lists do not display dates or amounts requiring shared formatters.
+  if(!['clienti','fornitori','commesse'].includes(route))assert.match(source,/@\/lib\/formatters/,route);
  }
  assert.match(read('src/app/(portal)/loading.tsx'),/PageLoading/);
  assert.ok(!fs.existsSync(path.join(root,"src/app/'(portal)'")), 'commercial pages must inherit the portal route and loading');

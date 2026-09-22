@@ -24,3 +24,5 @@
 \ir migrations/020_phase2a1_status_documents_entities.sql
 \ir migrations/021_phase2a5_company_esolver.sql
 \ir migrations/022_phase2b_work.sql
+\ir migrations/023_document_notes.sql
+\ir migrations/024_audit_high_fixes.sql

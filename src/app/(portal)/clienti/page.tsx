@@ -42,9 +42,16 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
   <div className="d-flex align-items-center gap-2">
     {customer.esolver_code && (
       <>
-        <span className="badge text-bg-secondary flex-shrink-0">
-          {customer.esolver_code}
-        </span>
+       <span
+  className="badge flex-shrink-0"
+  style={{
+    backgroundColor: "rgba(0, 70, 140, 0.10)",
+    color: "var(--simi-blue)",
+    border: "1px solid rgba(0, 70, 140, 0.20)",
+  }}
+>
+  {customer.esolver_code}
+</span>
         <span className="text-muted">-</span>
       </>
     )}

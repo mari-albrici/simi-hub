@@ -39,11 +39,24 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
               {customers.map((customer) => (
                 <tr key={customer.id}>
                   <td className="col-description" title={customer.business_name}>
-                    <Link href={`/clienti/${customer.id}`} className="text-decoration-none fw-semibold text-dark">
-                      {customer.business_name}
-                    </Link>
-                    {customer.esolver_code && <div className="small text-muted text-truncate">eSolver {customer.esolver_code}</div>}
-                  </td>
+  <div className="d-flex align-items-center gap-2">
+    {customer.esolver_code && (
+      <>
+        <span className="badge text-bg-secondary flex-shrink-0">
+          {customer.esolver_code}
+        </span>
+        <span className="text-muted">-</span>
+      </>
+    )}
+
+    <Link
+      href={`/clienti/${customer.id}`}
+      className="text-decoration-none fw-semibold text-dark text-truncate"
+    >
+      {customer.business_name}
+    </Link>
+  </div>
+</td>
                   <td className="text-nowrap">{customer.country ?? "—"}</td>
                   <td className="col-description">{customer.vat_number ?? "—"}</td>
                   <td className="col-description">{contacts.filter(c=>c.company_id===customer.id).map(c=>c.label).join(", ") || "—"}</td>

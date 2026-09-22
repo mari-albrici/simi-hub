@@ -40,11 +40,33 @@ async function saveInvoice(form: FormData, edit: boolean) {
     id: edit ? form.get("id") : undefined, expected_updated_at: edit ? form.get("expected_updated_at") : undefined,
     invoice_type: type, invoice_number: form.get("invoice_number"), legal_entity_id: form.get("legal_entity_id"), esolver_registration_number: form.get("esolver_registration_number") || "",
     counterparty_id: counterpartyId,
-    new_counterparty: !counterpartyId && newName ? {
-      company_type: type === "purchase" ? "supplier" : "customer", business_name: newName,
-      vat_number: form.get("counterparty_new_vat"), address: form.get("counterparty_new_address"), iban: form.get("counterparty_new_iban"),
-      country: "", email: "",
-    } : null,
+    new_counterparty: !counterpartyId && newName
+  ? {
+      company_type:
+        type === "purchase"
+          ? "supplier"
+          : "customer",
+
+      business_name: newName,
+
+      esolver_code:
+        String(
+          form.get("counterparty_new_esolver_code") ?? "",
+        ).trim() || null,
+
+      vat_number:
+        form.get("counterparty_new_vat"),
+
+      address:
+        form.get("counterparty_new_address"),
+
+      iban:
+        form.get("counterparty_new_iban"),
+
+      country: "",
+      email: "",
+    }
+  : null,
     invoice_date: form.get("invoice_date"), received_date: form.get("received_date"), registration_date: form.get("registration_date"), due_date: form.get("due_date"), status: form.get("status"), currency: String(form.get("currency") || "EUR").toUpperCase(), vat_treatment: form.get("vat_treatment"),
     amount_net: Number(form.get("amount_net")), vat_amount: Number(form.get("vat_amount")), amount_total: Number(form.get("amount_total")),
     vat_rate: form.get("vat_rate") ? Number(form.get("vat_rate")) : null,

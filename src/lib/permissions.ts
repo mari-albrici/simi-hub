@@ -30,6 +30,7 @@ export const PAGE_PERMISSIONS: Record<string, PermissionName> = {
   "/commesse": "project.read",
   "/documenti": "document.read",
   "/fatture": "invoice.read",
+  "/paghe": "payroll.summary.read",
   "/offerte": "offer.read",
   "/contratti": "contract.read",
   "/clienti": "company.read",

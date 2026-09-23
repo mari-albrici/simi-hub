@@ -45,6 +45,8 @@ export const NAV_ITEMS = [
   { label: "Documenti", href: "/documenti" },
 
   { label: "Fatture", href: "/fatture" },
+  
+  { label: "Paghe", href: "/paghe" },
 
   { label: "Pagamenti / Incassi", href: "/pagamenti" },
 

@@ -39,20 +39,21 @@ function NavigationTree({ items, mobile, pathname }: { items: NavigationItem[]; 
     const open = opened.includes(g.label), active = g.routes.some(r => isActiveRoute(pathname, r)), id = `${mobile ? "mobile" : "desktop"}-nav-${index}`;
     return <div><button className={`nav-link nav-group w-100 d-flex justify-content-between${active ? " group-active" : ""}`} type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpened(open ? opened.filter(x => x !== g.label) : [...opened, g.label])}>{g.label}<i aria-hidden="true" className={`bi bi-chevron-${open ? "up" : "down"}`} /></button><div id={id} className={`collapse${open ? " show" : ""}`}><div className="nav flex-column ps-3">{children.map(link)}</div></div></div>;
   };
-return (
-  <nav
-    aria-label="Navigazione principale"
-    className="nav flex-column gap-1"
-  >
-    {single("/dashboard")}
-    {single("/commesse")}
-    {group(0)}
-    {single("/documenti")}
-    {group(1)}
-    {group(2)}
-    {single("/personale")}
-    {single("/guide")}
-    {single("/report")}
-    {single("/impostazioni")}
-  </nav>
-);}
+  return (
+    <nav
+      aria-label="Navigazione principale"
+      className="nav flex-column gap-1"
+    >
+      {single("/dashboard")}
+      {single("/commesse")}
+      {group(0)}
+      {single("/documenti")}
+      {group(1)}
+      {group(2)}
+      {single("/personale")}
+      {single("/guide")}
+      {single("/report")}
+      {single("/impostazioni")}
+    </nav>
+  );
+}

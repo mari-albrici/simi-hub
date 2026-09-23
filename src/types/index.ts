@@ -45,7 +45,22 @@ export type PermissionName =
   | "order.read" | "order.create" | "order.update" | "order.delete"
   | "delivery_note.read" | "delivery_note.create" | "delivery_note.update" | "delivery_note.delete"
   | "offer.read" | "offer.create" | "offer.update" | "offer.archive"
-  | "contract.read" | "contract.create" | "contract.update" | "contract.archive";
+  | "contract.read" | "contract.create" | "contract.update" | "contract.archive"
+  | "payroll.summary.read"
+  | "payroll.employee.read"
+  | "payroll.read"
+  | "payroll.create"
+  | "payroll.update"
+  | "payroll.import"
+  | "payroll.review"
+  | "payroll.close"
+  | "payroll.reopen"
+  | "payroll.tfr.read"
+  | "payroll.tfr.manage"
+  | "payroll.loans.read"
+  | "payroll.loans.manage"
+  | "payroll.accounting.read"
+  | "payroll.accounting.export";
 
 export type CompanyType = "customer" | "supplier" | "both";
 export type InvoiceType = "purchase" | "sale";

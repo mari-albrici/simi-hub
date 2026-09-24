@@ -160,6 +160,24 @@ function numberValue(value: unknown): number {
     : 0;
 }
 
+function nullableNumberValue(
+  value: unknown,
+): number | null {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
 function relationObject(
   value: unknown,
 ): Record<string, unknown> | null {
@@ -441,9 +459,9 @@ export async function getPayrollRunById(
   const validation =
     (validationRaw ??
       {}) as Record<
-      string,
-      unknown
-    >;
+        string,
+        unknown
+      >;
 
   return {
     ...base,
@@ -825,24 +843,34 @@ export async function getPayrollEmployeeEntries(
       employee_id,
 
       gross_salary,
+      salary_cost,
       other_salary_items,
       social_security_base,
+      taxable_income,
       net_salary,
 
       employer_contributions,
       employee_contributions,
+      income_tax,
 
       tfr_accrual,
       tfr_inps,
       tfr_recovery,
 
       reimbursements,
+      travel_allowances,
+      bonuses,
 
       loan_deductions,
       fifth_assignment_deductions,
 
       company_cost,
+
       worked_hours,
+      holiday_hours,
+      leave_hours,
+      sickness_hours,
+      accident_hours,
 
       notes,
       created_at,
@@ -905,6 +933,11 @@ export async function getPayrollEmployeeEntries(
               row.gross_salary,
             ),
 
+          salary_cost:
+            nullableNumberValue(
+              row.salary_cost,
+            ),
+
           other_salary_items:
             numberValue(
               row.other_salary_items,
@@ -913,6 +946,11 @@ export async function getPayrollEmployeeEntries(
           social_security_base:
             numberValue(
               row.social_security_base,
+            ),
+
+          taxable_income:
+            nullableNumberValue(
+              row.taxable_income,
             ),
 
           net_salary:
@@ -928,6 +966,11 @@ export async function getPayrollEmployeeEntries(
           employee_contributions:
             numberValue(
               row.employee_contributions,
+            ),
+
+          income_tax:
+            nullableNumberValue(
+              row.income_tax,
             ),
 
           tfr_accrual:
@@ -950,6 +993,16 @@ export async function getPayrollEmployeeEntries(
               row.reimbursements,
             ),
 
+          travel_allowances:
+            nullableNumberValue(
+              row.travel_allowances,
+            ),
+
+          bonuses:
+            nullableNumberValue(
+              row.bonuses,
+            ),
+
           loan_deductions:
             numberValue(
               row.loan_deductions,
@@ -968,6 +1021,26 @@ export async function getPayrollEmployeeEntries(
           worked_hours:
             numberValue(
               row.worked_hours,
+            ),
+
+          holiday_hours:
+            nullableNumberValue(
+              row.holiday_hours,
+            ),
+
+          leave_hours:
+            nullableNumberValue(
+              row.leave_hours,
+            ),
+
+          sickness_hours:
+            nullableNumberValue(
+              row.sickness_hours,
+            ),
+
+          accident_hours:
+            nullableNumberValue(
+              row.accident_hours,
             ),
 
           notes:
@@ -1189,30 +1262,48 @@ export type PayrollEmployeeEntry = {
   last_name: string;
 
   gross_salary: number;
+  salary_cost: number | null;
   other_salary_items: number;
   social_security_base: number;
+  taxable_income: number | null;
   net_salary: number;
 
   employer_contributions: number;
   employee_contributions: number;
+  income_tax: number | null;
 
   tfr_accrual: number;
   tfr_inps: number;
   tfr_recovery: number;
 
   reimbursements: number;
+  travel_allowances: number | null;
+  bonuses: number | null;
 
   loan_deductions: number;
   fifth_assignment_deductions: number;
 
   company_cost: number;
+
   worked_hours: number;
+  holiday_hours: number | null;
+  leave_hours: number | null;
+  sickness_hours: number | null;
+  accident_hours: number | null;
 
   notes: string | null;
 
   created_at: string;
   updated_at: string;
 };
+
+
+
+const nullablePayrollNumberSchema =
+  z.number().nullable();
+
+const nonNegativeNullablePayrollNumberSchema =
+  z.number().min(0).nullable();
 
 const payrollEmployeeEntrySchema =
   z.object({
@@ -1227,6 +1318,9 @@ const payrollEmployeeEntrySchema =
         .number()
         .min(0),
 
+    salary_cost:
+      nonNegativeNullablePayrollNumberSchema,
+
     other_salary_items:
       z.coerce
         .number(),
@@ -1236,20 +1330,22 @@ const payrollEmployeeEntrySchema =
         .number()
         .min(0),
 
+    taxable_income:
+      nonNegativeNullablePayrollNumberSchema,
+
     net_salary:
       z.coerce
         .number()
         .min(0),
 
-    employer_contributions:
-      z.coerce
-        .number()
-        .min(0),
 
     employee_contributions:
       z.coerce
         .number()
         .min(0),
+
+    income_tax:
+      nonNegativeNullablePayrollNumberSchema,
 
     tfr_accrual:
       z.coerce
@@ -1267,21 +1363,35 @@ const payrollEmployeeEntrySchema =
       z.coerce
         .number(),
 
+    travel_allowances:
+      nullablePayrollNumberSchema,
+
+    bonuses:
+      nullablePayrollNumberSchema,
+
     loan_deductions:
       z.coerce.number().min(0),
 
     fifth_assignment_deductions:
       z.coerce.number().min(0),
 
-    company_cost:
-      z.coerce
-        .number()
-        .min(0),
 
     worked_hours:
       z.coerce
         .number()
         .min(0),
+
+    holiday_hours:
+      nonNegativeNullablePayrollNumberSchema,
+
+    leave_hours:
+      nonNegativeNullablePayrollNumberSchema,
+
+    sickness_hours:
+      nonNegativeNullablePayrollNumberSchema,
+
+    accident_hours:
+      nonNegativeNullablePayrollNumberSchema,
 
     notes:
       z.string()
@@ -1290,7 +1400,30 @@ const payrollEmployeeEntrySchema =
         .default(""),
   });
 
-  export async function savePayrollEmployeeEntryAction(
+function nullableFormNumber(
+  form: FormData,
+  name: string,
+): number | null {
+  const raw = form.get(name);
+
+  if (
+    raw === null ||
+    typeof raw !== "string" ||
+    raw.trim() === ""
+  ) {
+    return null;
+  }
+
+  const parsed = Number(
+    raw.trim().replace(",", "."),
+  );
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
+export async function savePayrollEmployeeEntryAction(
   form: FormData,
 ) {
   let payrollRunId = "";
@@ -1313,6 +1446,12 @@ const payrollEmployeeEntrySchema =
             "gross_salary",
           ) || 0,
 
+        salary_cost:
+          nullableFormNumber(
+            form,
+            "salary_cost",
+          ),
+
         other_salary_items:
           form.get(
             "other_salary_items",
@@ -1323,20 +1462,28 @@ const payrollEmployeeEntrySchema =
             "social_security_base",
           ) || 0,
 
+        taxable_income:
+          nullableFormNumber(
+            form,
+            "taxable_income",
+          ),
+
         net_salary:
           form.get(
             "net_salary",
           ) || 0,
 
-        employer_contributions:
-          form.get(
-            "employer_contributions",
-          ) || 0,
 
         employee_contributions:
           form.get(
             "employee_contributions",
           ) || 0,
+
+        income_tax:
+          nullableFormNumber(
+            form,
+            "income_tax",
+          ),
 
         tfr_accrual:
           form.get(
@@ -1358,21 +1505,57 @@ const payrollEmployeeEntrySchema =
             "reimbursements",
           ) || 0,
 
+        travel_allowances:
+          nullableFormNumber(
+            form,
+            "travel_allowances",
+          ),
+
+        bonuses:
+          nullableFormNumber(
+            form,
+            "bonuses",
+          ),
+
         loan_deductions:
-          form.get("loan_deductions") || 0,
+          form.get(
+            "loan_deductions",
+          ) || 0,
 
         fifth_assignment_deductions:
-          form.get("fifth_assignment_deductions") || 0,
-
-        company_cost:
           form.get(
-            "company_cost",
+            "fifth_assignment_deductions",
           ) || 0,
+
 
         worked_hours:
           form.get(
             "worked_hours",
           ) || 0,
+
+        holiday_hours:
+          nullableFormNumber(
+            form,
+            "holiday_hours",
+          ),
+
+        leave_hours:
+          nullableFormNumber(
+            form,
+            "leave_hours",
+          ),
+
+        sickness_hours:
+          nullableFormNumber(
+            form,
+            "sickness_hours",
+          ),
+
+        accident_hours:
+          nullableFormNumber(
+            form,
+            "accident_hours",
+          ),
 
         notes:
           form.get("notes") || "",
@@ -1398,20 +1581,27 @@ const payrollEmployeeEntrySchema =
         p_gross_salary:
           values.gross_salary,
 
+        p_salary_cost:
+          values.salary_cost,
+
         p_other_salary_items:
           values.other_salary_items,
 
         p_social_security_base:
           values.social_security_base,
 
+        p_taxable_income:
+          values.taxable_income,
+
         p_net_salary:
           values.net_salary,
 
-        p_employer_contributions:
-          values.employer_contributions,
 
         p_employee_contributions:
           values.employee_contributions,
+
+        p_income_tax:
+          values.income_tax,
 
         p_tfr_accrual:
           values.tfr_accrual,
@@ -1425,11 +1615,27 @@ const payrollEmployeeEntrySchema =
         p_reimbursements:
           values.reimbursements,
 
-        p_company_cost:
-          values.company_cost,
+        p_travel_allowances:
+          values.travel_allowances,
+
+        p_bonuses:
+          values.bonuses,
+
 
         p_worked_hours:
           values.worked_hours,
+
+        p_holiday_hours:
+          values.holiday_hours,
+
+        p_leave_hours:
+          values.leave_hours,
+
+        p_sickness_hours:
+          values.sickness_hours,
+
+        p_accident_hours:
+          values.accident_hours,
 
         p_notes:
           values.notes || null,
@@ -1450,8 +1656,12 @@ const payrollEmployeeEntrySchema =
     const deductionsResult = await db.rpc(
       "payroll_set_employee_loan_deductions",
       {
-        p_employee_entry_id: String(result.data),
-        p_loan_deductions: values.loan_deductions,
+        p_employee_entry_id:
+          String(result.data),
+
+        p_loan_deductions:
+          values.loan_deductions,
+
         p_fifth_assignment_deductions:
           values.fifth_assignment_deductions,
       },
@@ -1514,6 +1724,7 @@ const payrollEmployeeEntrySchema =
     );
   }
 }
+
 // ============================================================
 // P1.7 — ORE E ALLOCAZIONE COSTI ALLE COMMESSE
 // ============================================================
@@ -1532,14 +1743,14 @@ export type PayrollProjectHours = {
   project_code: string;
   project_name: string;
   hour_type:
-    | "worked"
-    | "holiday"
-    | "leave"
-    | "sickness"
-    | "accident"
-    | "training"
-    | "travel"
-    | "other";
+  | "worked"
+  | "holiday"
+  | "leave"
+  | "sickness"
+  | "accident"
+  | "training"
+  | "travel"
+  | "other";
   hours: number;
   source: string | null;
   notes: string | null;
@@ -1554,11 +1765,11 @@ export type PayrollAllocation = {
   project_code: string;
   project_name: string;
   allocation_method:
-    | "hours"
-    | "percentage"
-    | "equal"
-    | "manual"
-    | "fixed_project";
+  | "hours"
+  | "percentage"
+  | "equal"
+  | "manual"
+  | "fixed_project";
   worked_hours: number;
   allocation_percentage: number;
   salary_amount: number;
@@ -1888,11 +2099,11 @@ const payrollManualAllocationSchema = z.object({
 function isNextRedirect(error: unknown): boolean {
   return Boolean(
     error &&
-      typeof error === "object" &&
-      "digest" in error &&
-      String(
-        (error as { digest?: unknown }).digest,
-      ).startsWith("NEXT_REDIRECT"),
+    typeof error === "object" &&
+    "digest" in error &&
+    String(
+      (error as { digest?: unknown }).digest,
+    ).startsWith("NEXT_REDIRECT"),
   );
 }
 
@@ -3119,10 +3330,10 @@ export type PayrollLoanInstallment = {
   actual_amount: number | null;
   difference: number;
   reconciliation_status:
-    | "matched"
-    | "different"
-    | "missing"
-    | "suspended";
+  | "matched"
+  | "different"
+  | "missing"
+  | "suspended";
   payment_date: string | null;
   notes: string | null;
   payroll_year: number | null;
@@ -3367,8 +3578,8 @@ export async function getPayrollLoans(
           row.original_amount == null
             ? null
             : numberValue(
-                row.original_amount,
-              ),
+              row.original_amount,
+            ),
         installment_amount:
           numberValue(
             row.installment_amount,
@@ -3377,8 +3588,8 @@ export async function getPayrollLoans(
           row.total_installments == null
             ? null
             : numberValue(
-                row.total_installments,
-              ),
+              row.total_installments,
+            ),
         first_installment_date:
           stringOrNull(
             row.first_installment_date,
@@ -3415,11 +3626,11 @@ export async function getPayrollLoans(
           ),
         remaining_installments:
           row.remaining_installments ==
-          null
+            null
             ? null
             : numberValue(
-                row.remaining_installments,
-              ),
+              row.remaining_installments,
+            ),
       } satisfies PayrollLoan;
     })
     .sort(
@@ -3527,8 +3738,8 @@ export async function getPayrollLoanById(
       row.original_amount == null
         ? null
         : numberValue(
-            row.original_amount,
-          ),
+          row.original_amount,
+        ),
     installment_amount:
       numberValue(
         row.installment_amount,
@@ -3537,8 +3748,8 @@ export async function getPayrollLoanById(
       row.total_installments == null
         ? null
         : numberValue(
-            row.total_installments,
-          ),
+          row.total_installments,
+        ),
     first_installment_date:
       stringOrNull(
         row.first_installment_date,
@@ -3578,8 +3789,8 @@ export async function getPayrollLoanById(
       row.remaining_installments == null
         ? null
         : numberValue(
-            row.remaining_installments,
-          ),
+          row.remaining_installments,
+        ),
   };
 }
 
@@ -3675,13 +3886,13 @@ export async function getPayrollLoanInstallments(
     ),
     runIds.length > 0
       ? db
-          .from("payroll_runs")
-          .select("id,year,month")
-          .in("id", runIds)
+        .from("payroll_runs")
+        .select("id,year,month")
+        .in("id", runIds)
       : Promise.resolve({
-          data: [],
-          error: null,
-        }),
+        data: [],
+        error: null,
+      }),
   ]);
 
   checkDatabase(
@@ -3741,8 +3952,8 @@ export async function getPayrollLoanInstallments(
         row.actual_amount == null
           ? null
           : numberValue(
-              row.actual_amount,
-            ),
+            row.actual_amount,
+          ),
       difference:
         numberValue(row.difference),
       reconciliation_status:
@@ -4040,8 +4251,8 @@ export async function setPayrollLoanStatusAction(
     const actualEndDate =
       actualEndDateRaw
         ? z.iso.date().parse(
-            actualEndDateRaw,
-          )
+          actualEndDateRaw,
+        )
         : null;
 
     const db = await authorizedClient(
@@ -5209,18 +5420,18 @@ const payrollAccountingRuleSchema =
       .max(10000)
       .default(""),
   })
-  .refine(
-    (value) =>
-      Boolean(
-        value.debit_account_code ||
-        value.credit_account_code,
-      ),
-    {
-      message:
-        "Indicare almeno un conto Dare o Avere.",
-      path: ["debit_account_code"],
-    },
-  );
+    .refine(
+      (value) =>
+        Boolean(
+          value.debit_account_code ||
+          value.credit_account_code,
+        ),
+      {
+        message:
+          "Indicare almeno un conto Dare o Avere.",
+        path: ["debit_account_code"],
+      },
+    );
 
 const payrollManualAccountingEntrySchema =
   z.object({
@@ -5263,22 +5474,22 @@ const payrollManualAccountingEntrySchema =
       z.uuid(),
     ]).default(""),
   })
-  .refine(
-    (value) =>
-      (
-        value.debit > 0 &&
-        value.credit === 0
-      ) ||
-      (
-        value.credit > 0 &&
-        value.debit === 0
-      ),
-    {
-      message:
-        "Indicare un solo importo positivo: Dare oppure Avere.",
-      path: ["debit"],
-    },
-  );
+    .refine(
+      (value) =>
+        (
+          value.debit > 0 &&
+          value.credit === 0
+        ) ||
+        (
+          value.credit > 0 &&
+          value.debit === 0
+        ),
+      {
+        message:
+          "Indicare un solo importo positivo: Dare oppure Avere.",
+        path: ["debit"],
+      },
+    );
 
 function payrollAccountingRedirect(
   payrollRunId: string,
@@ -5866,6 +6077,105 @@ export async function clearPayrollGeneratedAccountingEntriesAction(
     );
   }
 }
+
+// ============================================================
+// P1.11B — TOTALE CONTRIBUTI AZIENDA
+// ============================================================
+
+const payrollEmployerContributionsTotalSchema =
+  z.object({
+    payroll_run_id: z.uuid(),
+
+    total_employer_contributions:
+      z.coerce
+        .number()
+        .min(
+          0,
+          "Il totale contributi azienda non può essere negativo.",
+        ),
+  });
+
+export async function savePayrollEmployerContributionsTotalAction(
+  form: FormData,
+) {
+  let payrollRunId = String(
+    form.get("payroll_run_id") || "",
+  );
+
+  try {
+    const values =
+      payrollEmployerContributionsTotalSchema.parse({
+        payroll_run_id:
+          payrollRunId,
+
+        total_employer_contributions:
+          form.get(
+            "total_employer_contributions",
+          ),
+      });
+
+    payrollRunId =
+      values.payroll_run_id;
+
+    const db =
+      await authorizedClient(
+        "payroll.update",
+      );
+
+    const result = await db.rpc(
+      "payroll_set_employer_contributions_total",
+      {
+        p_payroll_run_id:
+          values.payroll_run_id,
+
+        p_total_employer_contributions:
+          values.total_employer_contributions,
+      },
+    );
+
+    checkDatabase(
+      result.error,
+      "Aggiornamento contributi azienda",
+    );
+
+    revalidatePath(
+      `/paghe/${payrollRunId}`,
+    );
+    revalidatePath("/paghe");
+
+    redirect(
+      `/paghe/${payrollRunId}?success=${encodeURIComponent(
+        "Totale contributi azienda aggiornato e costi dipendenti ricalcolati.",
+      )}`,
+    );
+  } catch (error) {
+    if (isNextRedirect(error)) {
+      throw error;
+    }
+
+    const parsed =
+      publicError(error);
+
+    if (!payrollRunId) {
+      redirect(
+        `/paghe?error=${encodeURIComponent(
+          parsed.message,
+        )}&error_kind=${encodeURIComponent(
+          parsed.kind,
+        )}`,
+      );
+    }
+
+    redirect(
+      `/paghe/${payrollRunId}?error=${encodeURIComponent(
+        parsed.message,
+      )}&error_kind=${encodeURIComponent(
+        parsed.kind,
+      )}`,
+    );
+  }
+}
+
 
 // ============================================================
 // P1.12 — WORKFLOW ELABORAZIONE PAGHE

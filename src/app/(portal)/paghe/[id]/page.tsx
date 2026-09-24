@@ -20,12 +20,14 @@ import {
   clearPayrollGeneratedAccountingEntriesAction,
   deletePayrollManualAccountingEntryAction,
   savePayrollManualAccountingEntryAction,
+  savePayrollEmployerContributionsTotalAction,
   syncPayrollTfrAccrualAction,
   setPayrollRunStatusAction,
   closePayrollRunAction,
   reopenPayrollRunAction,
   type PayrollRunStatus,
 } from "@/lib/payroll";
+
 
 import { requirePagePermission } from "@/lib/permissions";
 
@@ -521,6 +523,7 @@ export default async function PayrollRunPage({
 
       <div className="row g-4">
         <div className="col-12 col-xl-8">
+
           {/* ---------------------------------------------- */}
           {/* FORM DIPENDENTE */}
           {/* ---------------------------------------------- */}
@@ -547,260 +550,6 @@ export default async function PayrollRunPage({
             proposalEntryId={proposalEntryId}
             disabled={isClosed}
           />
-
-          {/* ---------------------------------------------- */}
-          {/* TABELLA DIPENDENTI */}
-          {/* ---------------------------------------------- */}
-
-          <div className="card mb-4">
-            <div className="card-header bg-body">
-              <div className="d-flex justify-content-between align-items-center gap-3">
-                <h2 className="h5 mb-0">
-                  Dipendenti
-                </h2>
-
-                <span className="badge text-bg-light border">
-                  {employeeEntries.length}
-                </span>
-              </div>
-            </div>
-
-            {employeeEntries.length === 0 ? (
-              <div className="card-body py-5 text-center">
-                <i
-                  className="bi bi-people fs-1 text-muted"
-                  aria-hidden="true"
-                />
-
-                <h3 className="h5 mt-3">
-                  Nessun dipendente
-                </h3>
-
-                <p className="text-muted mb-0">
-                  Seleziona un dipendente dal
-                  modulo sopra per iniziare
-                  l&apos;elaborazione.
-                </p>
-              </div>
-            ) : (
-              <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th>Dipendente</th>
-
-                      <th className="text-end">
-                        Ore
-                      </th>
-
-                      <th className="text-end">
-                        Lordo
-                      </th>
-
-                      <th className="text-end">
-                        Contributi datore
-                      </th>
-
-                      <th className="text-end">
-                        Netto
-                      </th>
-
-                      <th className="text-end">
-                        Costo
-                      </th>
-
-                      <th className="text-end">
-                        TFR
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {employeeEntries.map(
-                      (entry) => (
-                        <tr key={entry.id}>
-                          <td>
-                            <div className="fw-semibold">
-                              {entry.last_name}{" "}
-                              {entry.first_name}
-                            </div>
-
-                            {entry.employee_code && (
-                              <div className="small text-muted">
-                                {
-                                  entry.employee_code
-                                }
-                              </div>
-                            )}
-                          </td>
-
-                          <td className="text-end text-nowrap">
-                            {formatNumber(
-                              entry.worked_hours,
-                            )}
-                          </td>
-
-                          <td className="text-end text-nowrap">
-                            {formatCurrency(
-                              entry.gross_salary,
-                              run.currency,
-                            )}
-                          </td>
-
-                          <td className="text-end text-nowrap">
-                            {formatCurrency(
-                              entry.employer_contributions,
-                              run.currency,
-                            )}
-                          </td>
-
-                          <td className="text-end text-nowrap">
-                            {formatCurrency(
-                              entry.net_salary,
-                              run.currency,
-                            )}
-                          </td>
-
-                          <td className="text-end text-nowrap fw-semibold">
-                            {formatCurrency(
-                              entry.company_cost,
-                              run.currency,
-                            )}
-                          </td>
-
-                          <td className="text-end text-nowrap">
-                            {(() => {
-                              const accrualMovement =
-                                tfrMovements.find(
-                                  (movement) =>
-                                    movement.employee_id ===
-                                      entry.employee_id &&
-                                    movement.movement_type ===
-                                      "accrual",
-                                );
-
-                              const synced =
-                                accrualMovement != null &&
-                                Math.abs(
-                                  accrualMovement.amount -
-                                    entry.tfr_accrual,
-                                ) <= 0.01;
-
-                              if (synced) {
-                                return (
-                                  <span className="text-success small">
-                                    <i
-                                      className="bi bi-check-circle-fill me-1"
-                                      aria-hidden="true"
-                                    />
-                                    Sincronizzato
-                                  </span>
-                                );
-                              }
-
-                              if (
-                                isClosed ||
-                                entry.tfr_accrual <= 0
-                              ) {
-                                return (
-                                  <span className="text-muted">
-                                    —
-                                  </span>
-                                );
-                              }
-
-                              return (
-                                <form
-                                  action={
-                                    syncPayrollTfrAccrualAction
-                                  }
-                                >
-                                  <input
-                                    type="hidden"
-                                    name="payroll_run_id"
-                                    value={run.id}
-                                  />
-                                  <input
-                                    type="hidden"
-                                    name="employee_entry_id"
-                                    value={entry.id}
-                                  />
-                                  <button
-                                    type="submit"
-                                    className="btn btn-sm btn-outline-secondary"
-                                  >
-                                    Sincronizza{" "}
-                                    {formatCurrency(
-                                      entry.tfr_accrual,
-                                      run.currency,
-                                    )}
-                                  </button>
-                                </form>
-                              );
-                            })()}
-                          </td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-
-                  <tfoot>
-                    <tr className="table-light fw-semibold">
-                      <td>
-                        Totale
-                      </td>
-
-                      <td className="text-end text-nowrap">
-                        {formatNumber(
-                          liveTotals.workedHours,
-                        )}
-                      </td>
-
-                      <td className="text-end text-nowrap">
-                        {formatCurrency(
-                          liveTotals.gross,
-                          run.currency,
-                        )}
-                      </td>
-
-                      <td className="text-end text-nowrap">
-                        {formatCurrency(
-                          liveTotals.employerContributions,
-                          run.currency,
-                        )}
-                      </td>
-
-                      <td className="text-end text-nowrap">
-                        {formatCurrency(
-                          liveTotals.net,
-                          run.currency,
-                        )}
-                      </td>
-
-                      <td className="text-end text-nowrap">
-                        {formatCurrency(
-                          liveTotals.companyCost,
-                          run.currency,
-                        )}
-                      </td>
-
-                      <td className="text-end text-nowrap">
-                        {formatCurrency(
-                          employeeEntries.reduce(
-                            (sum, entry) =>
-                              sum +
-                              entry.tfr_accrual,
-                            0,
-                          ),
-                          run.currency,
-                        )}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
-          </div>
 
           {/* ---------------------------------------------- */}
           {/* CONTABILIZZAZIONE */}
@@ -1424,6 +1173,147 @@ export default async function PayrollRunPage({
         {/* ------------------------------------------------ */}
 
         <div className="col-12 col-xl-4">
+          {/* ---------------------------------------------- */}
+          {/* CONTRIBUTI AZIENDA */}
+          {/* ---------------------------------------------- */}
+
+          <div className="card mb-4">
+            <div className="card-header bg-body">
+              <h2 className="h5 mb-1">
+                Contributi azienda
+              </h2>
+
+              <div className="small text-muted">
+                Totale mensile da ripartire sui dipendenti.
+              </div>
+            </div>
+
+            <div className="card-body">
+              <div className="d-flex flex-column gap-3">
+                <div>
+                  <div className="small text-muted mb-1">
+                    Totale inserito
+                  </div>
+
+                  <div className="fs-4 fw-semibold">
+                    {formatCurrency(
+                      run.total_employer_contributions,
+                      run.currency,
+                    )}
+                  </div>
+                </div>
+
+                <div className="d-flex justify-content-between gap-3 small">
+                  <span className="text-muted">
+                    Distribuito sui dipendenti
+                  </span>
+
+                  <span className="fw-semibold">
+                    {formatCurrency(
+                      liveTotals.employerContributions,
+                      run.currency,
+                    )}
+                  </span>
+                </div>
+
+                <div className="d-flex justify-content-between gap-3 small">
+                  <span className="text-muted">
+                    Differenza
+                  </span>
+
+                  <span
+                    className={
+                      Math.abs(
+                        run.total_employer_contributions -
+                          liveTotals.employerContributions,
+                      ) <= 0.01
+                        ? "fw-semibold text-success"
+                        : "fw-semibold text-danger"
+                    }
+                  >
+                    {formatCurrency(
+                      run.total_employer_contributions -
+                        liveTotals.employerContributions,
+                      run.currency,
+                    )}
+                  </span>
+                </div>
+
+                {!isClosed && (
+                  <>
+                    <hr className="my-0" />
+
+                    <form
+                      action={
+                        savePayrollEmployerContributionsTotalAction
+                      }
+                    >
+                      <input
+                        type="hidden"
+                        name="payroll_run_id"
+                        value={run.id}
+                      />
+
+                      <label
+                        className="form-label"
+                        htmlFor="total-employer-contributions"
+                      >
+                        Totale contributi azienda del mese
+                      </label>
+
+                      <div className="input-group">
+                        <span className="input-group-text">
+                          {run.currency === "EUR"
+                            ? "€"
+                            : run.currency}
+                        </span>
+
+                        <input
+                          id="total-employer-contributions"
+                          name="total_employer_contributions"
+                          type="number"
+                          className="form-control"
+                          min="0"
+                          step="0.01"
+                          defaultValue={
+                            run.total_employer_contributions
+                          }
+                          required
+                        />
+                      </div>
+
+                      <div className="form-text">
+                        Il salvataggio ridistribuisce
+                        automaticamente il totale in base
+                        all&apos;imponibile previdenziale di
+                        ciascun dipendente e aggiorna il
+                        relativo costo aziendale.
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="btn btn-primary w-100 mt-3"
+                      >
+                        <i
+                          className="bi bi-calculator me-2"
+                          aria-hidden="true"
+                        />
+                        Salva e ricalcola
+                      </button>
+                    </form>
+                  </>
+                )}
+
+                {isClosed && (
+                  <div className="small text-muted">
+                    Elaborazione chiusa: il totale non è
+                    modificabile.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* ---------------------------------------------- */}
           {/* CONTROLLI */}
           {/* ---------------------------------------------- */}

@@ -152,3 +152,140 @@ export const guideFormSchema = z.object({
     .array(guideChecklistItemSchema)
     .max(200),
 });
+export const managementAllocationSchema = z.object({
+  id: uuidSchema.optional(),
+  invoice_id: uuidSchema,
+  project_id: uuidSchema,
+  cost_category_id: nullableUuid,
+  allocated_amount: amount.refine(value => value > 0, "L'importo deve essere positivo"),
+  allocation_method: z.enum(["direct", "manual"]),
+  notes: z.string().trim().max(2000).nullable(),
+});
+
+export const costEntryAllocationSchema = managementAllocationSchema.omit({ id: true, invoice_id: true });
+
+export const manualCostEntrySchema = z.object({
+  cost_date: dateSchema,
+  description: z.string().trim().min(1).max(2000),
+  amount: amount.refine(value => value !== 0, "L'importo deve essere diverso da zero"),
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, "Valuta non valida"),
+  cost_category_id: nullableUuid,
+  cost_center_id: nullableUuid,
+  cost_pool_id: nullableUuid,
+  legal_entity_id: nullableUuid,
+  supplier_id: nullableUuid,
+  notes: optionalText,
+});
+
+export const costEntryClassificationSchema = z.object({
+  cost_category_id: nullableUuid,
+  cost_center_id: nullableUuid,
+  cost_pool_id: nullableUuid,
+  notes: optionalText,
+});
+
+export const managementCostPoolSchema = z.object({
+  code: z.string().trim().min(1).max(100),
+  name: z.string().trim().min(1).max(200),
+  description: optionalText,
+  cost_center_id: uuidSchema,
+  period_start: dateSchema,
+  period_end: dateSchema,
+  driver_type: z.enum(["labor_hours", "worker_days"]),
+  planned_driver_quantity: amount.refine(value => value >= 0, "La quantità non può essere negativa").nullable(),
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
+  status: z.enum(["draft", "active", "closed"]),
+  notes: optionalText,
+}).refine(value => value.period_end >= value.period_start, { path: ["period_end"], message: "La fine del periodo deve seguire l'inizio" });
+
+export const managementPoolDriverSchema = z.object({
+  pool_id: uuidSchema,
+  project_id: uuidSchema,
+  driver_quantity: amount.refine(value => value >= 0, "La quantità non può essere negativa"),
+  notes: optionalText,
+});
+
+const assetValue = amount.refine(value => value >= 0, "Il valore non può essere negativo").nullable();
+const assetRate = z.number().finite().min(0).max(99999999.999999)
+  .refine(value => Number(value.toFixed(6)) === value, "Massimo sei decimali").nullable();
+export const managementAssetSchema = z.object({
+  asset_code: z.string().trim().min(1).max(100), name: z.string().trim().min(1).max(200),
+  description: optionalText,
+  category: z.enum(["welding", "generators", "lifting", "instrumentation", "machinery", "special_equipment", "other"]),
+  purchase_date: optionalDate, purchase_cost: assetValue, management_value: assetValue,
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
+  allocation_method: z.enum(["hourly", "daily", "monthly", "manual"]),
+  hourly_rate: assetRate, daily_rate: assetRate, monthly_rate: assetRate,
+  status: z.enum(["available", "in_use", "maintenance", "retired"]), notes: optionalText,
+}).superRefine((value, ctx) => {
+  if (value.allocation_method !== "manual" && value[`${value.allocation_method}_rate`] === null) {
+    ctx.addIssue({ code: "custom", path: [`${value.allocation_method}_rate`], message: "Indicare la tariffa del metodo scelto" });
+  }
+});
+export const managementAssetMovementSchema = z.object({
+  asset_id: uuidSchema, to_project_id: nullableUuid, movement_date: dateSchema, notes: optionalText,
+});
+export const managementAssetUsageSchema = z.object({
+  asset_id: uuidSchema, project_id: uuidSchema, start_date: dateSchema, end_date: optionalDate,
+  usage_quantity: assetValue, manual_amount: assetValue,
+  status: z.enum(["active", "closed"]), notes: optionalText,
+}).refine(value => !value.end_date || value.end_date >= value.start_date,
+  { path: ["end_date"], message: "La fine deve seguire l'inizio" });
+
+export const managementContainerSchema = z.object({
+  container_code: z.string().trim().min(1).max(100), name: z.string().trim().min(1).max(200),
+  description: optionalText, ownership_type: z.enum(["owned", "rented", "third_party"]),
+  purchase_date: optionalDate, purchase_cost: assetValue,
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
+  status: z.enum(["available", "in_use", "maintenance", "retired"]), notes: optionalText,
+});
+export const managementContainerMovementSchema = z.object({
+  container_id: uuidSchema, to_project_id: nullableUuid, movement_date: dateSchema,
+  transport_cost: assetValue, currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/), notes: optionalText,
+});
+export const managementContainerAssetSchema = z.object({
+  container_id: uuidSchema, asset_id: uuidSchema, date_in: dateSchema, notes: optionalText,
+});
+export const managementContainerAssetRemovalSchema = z.object({ id: uuidSchema, date_out: dateSchema });
+
+export const projectManagementBudgetSchema = z.object({
+  name: z.string().trim().min(1).max(200), valid_from: optionalDate,
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/), notes: optionalText,
+});
+export const projectManagementBudgetLineSchema = z.object({
+  budget_id: uuidSchema, cost_category_id: uuidSchema, description: optionalText,
+  amount: amount.refine(value => value >= 0, "Il budget non può essere negativo"), notes: optionalText,
+});
+export const projectManagementForecastSchema = projectManagementBudgetSchema.omit({ valid_from: true }).extend({ forecast_date: dateSchema });
+export const projectManagementForecastLineSchema = z.object({
+  forecast_id: uuidSchema, cost_category_id: uuidSchema,
+  cost_to_complete: amount.refine(value => value >= 0, "Il costo a finire non può essere negativo"), notes: optionalText,
+});
+
+export const employeeManagementRateSchema = z.object({
+  employee_id: uuidSchema, valid_from: dateSchema, valid_to: optionalDate,
+  hourly_cost: assetRate.unwrap(), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/), notes: optionalText,
+}).refine(value => !value.valid_to || value.valid_to >= value.valid_from, { path: ["valid_to"], message: "La fine deve seguire l'inizio" });
+export const projectLaborEntrySchema = z.object({
+  employee_id: uuidSchema, project_id: uuidSchema, work_date: dateSchema,
+  hours: amount.refine(value => value > 0 && value <= 999999.99, "Ore non valide"),
+  hour_type: z.enum(["ordinary", "overtime", "travel", "other"]), notes: optionalText,
+});
+
+export const managementConsumableItemSchema = z.object({
+  item_code: z.string().trim().min(1).max(100), name: z.string().trim().min(1).max(200), description: optionalText,
+  category: optionalText, unit: z.enum(["pcs", "kg", "m", "l", "box", "pack", "other"]),
+  default_unit_cost: assetRate, currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/), is_active: z.boolean(), notes: optionalText,
+});
+export const managementConsumableMovementSchema = z.object({
+  item_id: uuidSchema, movement_type: z.enum(["load", "transfer", "consumption", "adjustment"]),
+  from_container_id: nullableUuid, to_container_id: nullableUuid, project_id: nullableUuid,
+  quantity: z.number().finite().positive().max(99999999999.999).refine(value => Number(value.toFixed(3)) === value, "Massimo tre decimali"),
+  unit_cost: assetRate, movement_date: dateSchema, notes: optionalText,
+}).superRefine((v, ctx) => {
+  const valid = v.movement_type === "load" ? !v.from_container_id && !!v.to_container_id && !v.project_id && v.unit_cost !== null
+    : v.movement_type === "transfer" ? !!v.from_container_id && !!v.to_container_id && v.from_container_id !== v.to_container_id && !v.project_id
+    : v.movement_type === "consumption" ? !!v.from_container_id && !v.to_container_id && !!v.project_id
+    : Boolean(v.from_container_id) !== Boolean(v.to_container_id) && !v.project_id && !!v.notes.trim();
+  if (!valid) ctx.addIssue({ code: "custom", message: "Specificare destinazioni, costo o motivazione coerenti con il movimento" });
+});

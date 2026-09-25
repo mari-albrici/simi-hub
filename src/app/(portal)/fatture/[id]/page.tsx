@@ -1,3 +1,6 @@
+import { ManagementAllocations } from "@/components/commercial/management-allocations";
+import { getManagementAllocationsByInvoice, getManagementCostCategories } from "@/lib/management-allocations";
+import { hasPermission } from "@/lib/auth";
 import { InvoiceProjectRequirement } from "@/components/work/invoice-requirement";
 import { ContextWork, ContextAnomalies } from "@/components/work/context";
 import { FileLink } from "@/components/documents/file-link";
@@ -11,7 +14,7 @@ import {
   requirePagePermission,
   getAccessScope,
 } from "@/lib/permissions";
-import { getInvoiceById } from "@/lib/data";
+import { getInvoiceById, getProjects } from "@/lib/data";
 import { ActivityTimeline } from "@/components/ui/activity-timeline";
 import {
   getInvoiceFinancialSummaries,
@@ -27,7 +30,7 @@ export default async function InvoiceDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requirePagePermission("invoice.read");
+  const user = await requirePagePermission("invoice.read");
 
   const invoice = await getInvoiceById((await params).id);
 
@@ -45,6 +48,14 @@ export default async function InvoiceDetailPage({
     getInstallmentBalances(invoice.id),
     getAccessScope("invoice"),
     getInvoiceFinancialSummaries([invoice.id]),
+  ]);
+
+  const canReadManagement = hasPermission(user.role, "management.read");
+  const canUpdateManagement = hasPermission(user.role, "management.update");
+  const [managementAllocations, allocationProjects, costCategories] = await Promise.all([
+    canReadManagement ? getManagementAllocationsByInvoice(invoice.id) : Promise.resolve([]),
+    canReadManagement && canUpdateManagement ? getProjects() : Promise.resolve([]),
+    canReadManagement && canUpdateManagement ? getManagementCostCategories() : Promise.resolve([]),
   ]);
 
   const financial = financialSummaries.get(invoice.id) ?? {
@@ -471,6 +482,18 @@ export default async function InvoiceDetailPage({
           <p>Nessuna rata registrata.</p>
         )}
       </div>
+
+      {canReadManagement && (
+        <ManagementAllocations
+          invoiceId={invoice.id}
+          amountTotal={invoice.amount_total}
+          currency={invoice.currency}
+          allocations={managementAllocations}
+          projects={allocationProjects}
+          costCategories={costCategories}
+          canUpdate={canUpdateManagement}
+        />
+      )}
 
       <InvoiceCycle id={invoice.id} />
 

@@ -1,4 +1,7 @@
 import Link from "@/components/ui/app-link";
+import { Suspense } from "react";
+import { SectionLoading } from "@/components/ui/loading";
+import { ProjectManagementSummary } from "@/components/commercial/management-summaries";
 import { notFound } from "next/navigation";
 
 import { ContextWork } from "@/components/work/context";
@@ -41,6 +44,7 @@ type ProjectTab =
   | "documents"
   | "offers"
   | "invoices"
+  | "management"
   | "deadlines";
 
 
@@ -62,16 +66,20 @@ export default async function ProjectDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; management_page?: string; budget?: string; forecast?: string }>;
 }) {
   // ----------------------------------------------------------
   // ACCESSO
   // ----------------------------------------------------------
 
-  await requirePagePermission("project.read");
+  const user = await requirePagePermission("project.read");
+  const canReadManagement = hasPermission(user.role, "management.read");
 
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { tab, management_page, budget, forecast } = await searchParams;
+  const requestedManagementPage = Number(management_page ?? 1);
+  const managementPage = Number.isSafeInteger(requestedManagementPage) && requestedManagementPage > 0 && requestedManagementPage <= 100000
+    ? requestedManagementPage : 1;
 
   const allowedTabs: ProjectTab[] = [
     "overview",
@@ -80,6 +88,8 @@ export default async function ProjectDetailPage({
     "invoices",
     "deadlines",
   ];
+
+  if (canReadManagement) allowedTabs.push("management");
 
   const activeTab: ProjectTab = allowedTabs.includes(
     tab as ProjectTab
@@ -374,6 +384,9 @@ export default async function ProjectDetailPage({
             Scadenze
           </ProjectTabLink>
 
+          {canReadManagement && <ProjectTabLink id={id} tab="management" activeTab={activeTab} icon="bi-calculator">
+            Controllo di gestione
+          </ProjectTabLink>}
         </nav>
 
       </div>
@@ -382,6 +395,12 @@ export default async function ProjectDetailPage({
       {/* ======================================================
           TAB: PANORAMICA
       ======================================================= */}
+
+      {activeTab === "management" && canReadManagement && (
+        <Suspense key={`${id}-${managementPage}`} fallback={<SectionLoading label="Caricamento costi gestionali…" />}>
+          <ProjectManagementSummary projectId={id} page={managementPage} budgetId={budget} forecastId={forecast} />
+        </Suspense>
+      )}
 
       {activeTab === "overview" && (
         <div>

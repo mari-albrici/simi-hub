@@ -8,6 +8,10 @@ export function hasPermission(role: string, permission: string) {
   // Admin ha accesso a tutte le capability della piattaforma.
   if (role === "admin") return true;
 
+  // Management allocations: same role grants as migration 026.
+  if (permission === "management.read" && ["administration", "management"].includes(role)) return true;
+  if (permission === "management.update" && role === "administration") return true;
+
   // Permessi HR già esistenti.
   if (
     role === "hr" &&

@@ -45,6 +45,11 @@ export const NAV_ITEMS = [
   { label: "Documenti", href: "/documenti" },
 
   { label: "Fatture", href: "/fatture" },
+  { label: "Costi gestionali", href: "/costi-gestionali" },
+  { label: "Pool costi", href: "/pool-costi" },
+  { label: "Attrezzature", href: "/attrezzature" },
+  { label: "Container", href: "/container" },
+  { label: "Consumabili", href: "/consumabili" },
   
   { label: "Paghe", href: "/paghe" },
 
@@ -72,3 +77,11 @@ export const NAV_ITEMS = [
 
   { label: "Impostazioni", href: "/impostazioni" },
 ];
+export const MANAGEMENT_ASSET_CATEGORIES = { welding: "Saldatura", generators: "Generatori", lifting: "Sollevamento", instrumentation: "Strumentazione", machinery: "Macchinari", special_equipment: "Attrezzature speciali", other: "Altro" } as const;
+export const MANAGEMENT_ASSET_METHODS = { hourly: "Orario", daily: "Giornaliero", monthly: "Mensile", manual: "Manuale" } as const;
+export const MANAGEMENT_ASSET_STATUSES = { available: "Disponibile", in_use: "In uso", maintenance: "Manutenzione", retired: "Dismesso" } as const;
+export const MANAGEMENT_ASSET_UNITS = { hours: "ore", days: "giorni", months: "mesi", manual: "manuale" } as const;
+export const MANAGEMENT_CONTAINER_OWNERSHIP = { owned: "Proprietà", rented: "Noleggio", third_party: "Di terzi" } as const;
+export const CONSUMABLE_UNITS = { pcs: "pz", kg: "kg", m: "m", l: "l", box: "scatole", pack: "confezioni", other: "altro" } as const;
+export const CONSUMABLE_MOVEMENTS = { load: "Carico", transfer: "Trasferimento", consumption: "Consumo", adjustment: "Rettifica" } as const;
+export const LABOR_HOUR_TYPES = { ordinary: "Ordinarie", overtime: "Straordinario", travel: "Trasferta", other: "Altro" } as const;
